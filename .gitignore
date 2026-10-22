@@ -1,0 +1,15 @@
+# Your settings and password - never commit
+.env
+.env.bak
+
+# Backups contain your config files, including API keys
+backups/
+
+# The editor's own settings (login hash, appearance...)
+data/
+
+__pycache__/
+*.pyc
+
+# Personal development notes (not published)
+DEV-NOTES.md

@@ -1,0 +1,44 @@
+# Homepage Editor v1.0.0 - web page to edit Homepage's config, with dated backups and restore.
+# SPDX-License-Identifier: MIT
+#
+# Settings come from .env (made by ./setup.sh, or copy .env.example to .env and fill it in).
+# By default this uses the ready image (amd64 + arm64). To build from the source in this folder
+# instead, setup.sh adds docker-compose.build.yml (see COMPOSE_FILE in .env).
+name: ${STACK_NAME:-homepage-editor}
+
+services:
+  homepage-editor:
+    image: ${IMAGE:-ghcr.io/bottega-lab/homepage-editor:1}
+    container_name: ${STACK_NAME:-homepage-editor}
+    restart: unless-stopped
+    ports:
+      - "${EDITOR_PORT:-5005}:8080"
+    environment:
+      PUID: ${PUID:-1000}                       # owner of Homepage's config files (ls -ln)
+      PGID: ${PGID:-1000}
+      TZ: ${TZ:-UTC}
+      AUTH_MODE: ${AUTH_MODE:-login}            # login page, or "off" (only behind other protection)
+      EDITOR_USER: ${EDITOR_USER:-admin}
+      EDITOR_PASSWORD: ${EDITOR_PASSWORD:-}     # no default on purpose: with login on, required
+      BACKUP_KEEP: ${BACKUP_KEEP:-100}
+      HOMEPAGE_PROTOCOL: ${HOMEPAGE_PROTOCOL:-http}
+      HOMEPAGE_HOST: ${HOMEPAGE_HOST:-}
+      HOMEPAGE_PORT: ${HOMEPAGE_PORT:-}
+      # Only shown in Settings > About
+      INFO_STACK_NAME: ${STACK_NAME:-homepage-editor}
+      INFO_EDITOR_PORT: ${EDITOR_PORT:-5005}
+      INFO_CONFIG_PATH: ${HOMEPAGE_CONFIG:-}
+      INFO_BACKUP_PATH: ${BACKUP_PATH:-${APP_DIR:-.}/backups}
+      INFO_DATA_PATH: ${DATA_PATH:-${APP_DIR:-.}/data}
+    volumes:
+      - ${HOMEPAGE_CONFIG:?Set HOMEPAGE_CONFIG in .env (Homepage's config folder), or run ./setup.sh}:/config
+      - ${BACKUP_PATH:-${APP_DIR:-.}/backups}:/backups   # dated backups
+      - ${DATA_PATH:-${APP_DIR:-.}/data}:/data          # the editor's own settings
+    # The container starts as root only to give /backups and /data to PUID:PGID, then runs as
+    # PUID:PGID. Homepage's config folder is never changed.
+
+networks:
+  default:
+    ipam:
+      config:
+        - subnet: ${EDITOR_SUBNET:-172.31.250.0/24}   # change if another Docker network uses it

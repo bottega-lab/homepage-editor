@@ -1,0 +1,5 @@
+flask==3.0.3
+pyyaml==6.0.2
+gunicorn==23.0.0
+tzdata==2024.2
+webauthn==2.7.1

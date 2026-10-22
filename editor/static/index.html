@@ -1,0 +1,959 @@
+<!doctype html>
+<!-- Homepage Editor v1.0.0 - SPDX-License-Identifier: MIT -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Homepage Editor</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<script>try{var t=localStorage.getItem("he-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;}catch(e){}</script>
+<style>
+:root{
+  --bg:#0f141b; --panel:#171e28; --panel2:#1e2733; --line:#2b3644; --text:#e6ebf1; --muted:#97a3b3;
+  --accent:#4ea1ff; --accent-ink:#06223f; --ok:#3fb27f; --warn:#e0a63a; --bad:#e5604f;
+  --radius:10px; --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  --hdr-bg:rgba(15,20,27,.96); --field:#0c1117; --line-strong:#43536a; --danger:#ffb4a8; --danger-line:#6e3a33;
+  --add:#7ee2a8; --del:#ff9d8f; --toast:#22303f; --warn-line:#6b5326; --warn-bg:#2a2114; --warn-text:#f2d29a;
+  --shadow:rgba(0,0,0,.45); color-scheme:dark;
+}
+/* Light theme: chosen in Configure, or "System" when the computer uses light mode */
+:root[data-theme="light"]{--bg:#f3f5f8; --panel:#ffffff; --panel2:#eef2f6; --line:#d3dbe4; --text:#16202b; --muted:#566476;
+  --accent:#1f6fcc; --accent-ink:#ffffff; --ok:#1f8f5f; --warn:#9a6400; --bad:#c53b2c;
+  --hdr-bg:rgba(243,245,248,.96); --field:#ffffff; --line-strong:#9fb0c3; --danger:#b42318; --danger-line:#f1b8b0;
+  --add:#18794e; --del:#b42318; --toast:#ffffff; --warn-line:#e3c27a; --warn-bg:#fff6dc; --warn-text:#5f4300;
+  --shadow:rgba(20,40,70,.18); color-scheme:light;}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#f3f5f8; --panel:#ffffff; --panel2:#eef2f6; --line:#d3dbe4; --text:#16202b; --muted:#566476;
+  --accent:#1f6fcc; --accent-ink:#ffffff; --ok:#1f8f5f; --warn:#9a6400; --bad:#c53b2c;
+  --hdr-bg:rgba(243,245,248,.96); --field:#ffffff; --line-strong:#9fb0c3; --danger:#b42318; --danger-line:#f1b8b0;
+  --add:#18794e; --del:#b42318; --toast:#ffffff; --warn-line:#e3c27a; --warn-bg:#fff6dc; --warn-text:#5f4300;
+  --shadow:rgba(20,40,70,.18); color-scheme:light;}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+header{position:sticky;top:0;z-index:5;background:var(--hdr-bg);border-bottom:1px solid var(--line)}
+.bar{margin:0;padding:10px 18px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.bar h1{font-size:17px;margin:0 8px 0 0;font-weight:650;display:flex;align-items:center;gap:10px}
+.brand-logo{height:32px;max-height:36px;width:auto;max-width:180px;object-fit:contain;display:block;flex:none}
+.brand-logo.default{height:28px;border-radius:7px}
+/* sun / moon switch (far top right) */
+.tt{display:inline-flex;align-items:center;gap:6px;background:none;border:0;padding:6px 2px 6px 6px;color:var(--text);cursor:pointer;min-height:34px}
+.tt svg{width:18px;height:18px;flex:none;transition:opacity .15s}
+.tt .track{position:relative;width:38px;height:22px;border-radius:999px;background:var(--panel2);border:1px solid var(--line);transition:background .18s}
+.tt .knob{position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:var(--text);transition:left .18s}
+.tt[aria-checked="true"] .knob{left:18px}
+.tt[aria-checked="true"] .sun,.tt[aria-checked="false"] .moon{opacity:.45}
+.tt:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:8px}
+.logo-prev{display:flex;align-items:center;justify-content:center;min-height:70px;padding:12px;border:1px dashed var(--line);border-radius:8px;background:var(--panel2)}
+.logo-prev img{max-height:48px;max-width:100%;object-fit:contain}
+label.chk{display:flex;gap:8px;align-items:center;font-size:13px;color:var(--text);cursor:pointer}
+nav{display:flex;gap:4px;flex-wrap:wrap}
+nav button{background:none;border:1px solid transparent;color:var(--muted);padding:7px 10px;border-radius:8px;cursor:pointer;font:inherit}
+nav button[aria-selected=true]{background:var(--panel2);color:var(--text);border-color:var(--line)}
+.spacer{flex:1}
+a{color:var(--accent)}
+/* "Open Homepage": raised (embossed) button; pressed look while clicking */
+a.hp-btn{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:7px 14px;border-radius:8px;
+  font-weight:650;color:#06223f;text-decoration:none;white-space:nowrap;
+  background:linear-gradient(180deg,#7dbbff 0%,#4ea1ff 55%,#2f86e8 100%);
+  border:1px solid #1f6fcc;border-top-color:#a9d2ff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.45),0 2px 0 #174f93,0 4px 10px var(--shadow);
+  text-shadow:0 1px 0 rgba(255,255,255,.3);transition:transform .08s,box-shadow .08s,filter .15s}
+a.hp-btn:hover{filter:brightness(1.07)}
+a.hp-btn:active{transform:translateY(2px);
+  box-shadow:inset 0 2px 4px rgba(0,0,0,.35),0 0 0 #174f93,0 1px 3px rgba(0,0,0,.4)}
+a.hp-btn:focus-visible{outline:2px solid var(--text);outline-offset:2px}
+a.hp-btn[hidden]{display:none}
+main{min-width:0;max-width:1320px;padding:18px 26px 80px}
+.intro{color:var(--muted);margin:0 0 14px;max-width:820px}
+.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.toolbar.sticky{position:sticky;top:var(--hdr,58px);z-index:4;background:var(--bg);margin:0 -26px 14px;padding:10px 26px;border-bottom:1px solid var(--line)}
+button.btn{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:8px;padding:7px 12px;cursor:pointer;font:inherit;min-height:34px}
+button.btn:hover{border-color:var(--line-strong)}
+button.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink);font-weight:650}
+button.danger{color:var(--danger)}
+button.icon{min-width:34px;padding:6px 8px}
+button:disabled{opacity:.45;cursor:not-allowed}
+.dirty{color:var(--warn);font-size:13px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:12px;margin-bottom:12px}
+.ghead{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:8px}
+.ghead input.gname{font-weight:650;font-size:15px;flex:1 1 220px}
+.count{color:var(--muted);font-size:12px}
+.item{border:1px solid var(--line);border-radius:8px;margin-top:8px;background:var(--panel2)}
+.ihead{display:flex;align-items:center;gap:6px;padding:6px 8px;flex-wrap:wrap}
+.toggle{flex:1 1 260px;min-width:0;text-align:left;background:none;border:0;color:var(--text);cursor:pointer;font:inherit;padding:6px 4px;display:flex;gap:10px;align-items:baseline}
+.toggle b{white-space:nowrap}
+.toggle span{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ibody{padding:4px 12px 12px;border-top:1px solid var(--line)}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px 14px;margin-top:10px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+label.f.wide{grid-column:1/-1}
+input,select,textarea{background:var(--field);color:var(--text);border:1px solid var(--line);border-radius:7px;padding:7px 9px;font:inherit;min-height:34px;width:100%}
+input[type=checkbox]{width:20px;height:20px;min-height:0;padding:0;flex:none;accent-color:var(--accent)}
+input[type=range]{min-height:0;border:0;background:none}
+textarea{font-family:var(--mono);font-size:12.5px;line-height:1.5;resize:vertical}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.help{color:var(--muted);font-size:12px}
+.tag{font-size:11px;padding:2px 7px;border-radius:999px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.tag.bad{color:var(--danger);border-color:var(--danger-line)}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{font-size:12px;color:var(--muted);font-weight:500;text-align:left;padding:6px;border-bottom:1px solid var(--line)}
+.tbl td{padding:6px;border-bottom:1px solid var(--line);vertical-align:middle}
+.scroll{overflow-x:auto}
+.layout-tbl input,.layout-tbl select{min-width:130px}
+.layout-tbl td.name{min-width:170px}
+h2{font-size:15px;margin:0 0 4px}
+.cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
+@media (max-width:900px){.cols{grid-template-columns:1fr}}
+.preview{position:relative;height:260px;border-radius:var(--radius);overflow:hidden;border:1px solid var(--line);background:#0b0f14}
+.preview .img{position:absolute;inset:-30px;background-size:cover;background-position:center}
+.preview .cards{position:absolute;inset:0;padding:22px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-content:start}
+.preview .pc{height:58px;border-radius:8px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.08);padding:8px 10px;font-size:12px}
+.preview .pt{grid-column:1/-1;font-weight:650}
+.range{display:flex;gap:8px;align-items:center}
+.range input[type=range]{flex:1;padding:0}
+.range output{width:36px;text-align:right;font-variant-numeric:tabular-nums}
+pre.diff{background:var(--field);border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;max-height:420px;font:12px/1.5 var(--mono);white-space:pre}
+.add{color:var(--add)}.del{color:var(--del)}
+#toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);max-width:min(680px,92vw);padding:12px 16px;border-radius:9px;background:var(--toast);border:1px solid var(--line);box-shadow:0 8px 30px var(--shadow);display:none;z-index:10;white-space:pre-line}
+#toast.ok{border-color:var(--ok)}#toast.bad{border-color:var(--bad)}
+.warnbox{border:1px solid var(--warn-line);background:var(--warn-bg);color:var(--warn-text);border-radius:8px;padding:10px 12px;margin-bottom:12px}
+.empty{color:var(--muted);padding:16px;text-align:center}
+.hdr-actions{display:flex;gap:8px;align-items:center}
+/* ---- V7 layout: sidebar + top bar ---- */
+.shell{display:grid;grid-template-columns:220px minmax(0,1fr);min-height:calc(100vh - var(--hdr,57px))}
+aside.side{position:sticky;top:var(--hdr,57px);align-self:start;height:calc(100vh - var(--hdr,57px));border-right:1px solid var(--line);
+  padding:14px 10px;display:flex;flex-direction:column;background:var(--panel);overflow:auto}
+.side nav{display:flex;flex-direction:column;gap:2px}
+.side nav button,.mside button{display:flex;align-items:center;gap:10px;width:100%;padding:9px 12px;border-radius:8px;border:0;background:none;
+  color:var(--muted);font:inherit;text-align:left;cursor:pointer}
+.side nav button svg,.mside button svg{width:17px;height:17px;flex:none}
+.side nav button:hover,.mside button:hover{background:var(--panel2);color:var(--text)}
+.side nav button[aria-selected="true"],.mside button[aria-current="true"]{background:var(--accent);color:var(--accent-ink);font-weight:650}
+.side .grow{flex:1}
+.side .foot{font-size:12px;color:var(--muted);padding:8px 12px}
+.sep{width:1px;height:22px;background:var(--line);margin:0 4px}
+.ghost{display:inline-flex;align-items:center;gap:7px;background:none;border:1px solid transparent;color:var(--text);padding:7px 10px;border-radius:8px;font:inherit;cursor:pointer;min-height:34px;text-decoration:none}
+.ghost:hover{background:var(--panel2)}
+.ghost svg{width:17px;height:17px;flex:none}
+.icon-only{padding:7px}
+a.support{display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border-radius:9px;font-weight:600;text-decoration:none;
+  background:rgba(229,71,107,.14);color:#ff7d98;border:1px solid rgba(229,71,107,.45)}
+:root[data-theme="light"] a.support{color:#c42a4f}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]) a.support{color:#c42a4f}}
+a.support svg{width:15px;height:15px}
+a.support[hidden]{display:none}
+.avatar{width:32px;height:32px;flex:none;border-radius:50%;background:#e57a2e;color:#fff;font:inherit;font-weight:700;display:grid;place-items:center;border:0;cursor:pointer;text-transform:uppercase}
+.avatar:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.nologin{font-size:12px;font-weight:650;color:var(--warn-text);background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:999px;padding:4px 10px;white-space:nowrap}
+@media (max-width:1100px){.ghost .lbl,a.support .lbl{display:none}.ghost{padding:7px}}
+@media (max-width:820px){
+  .shell{grid-template-columns:1fr}
+  aside.side{position:static;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:8px}
+  .side nav{flex-direction:row;overflow-x:auto}.side nav button{width:auto;white-space:nowrap}
+  .side .grow,.side .foot{display:none}
+  main{padding:14px 16px 60px}.toolbar.sticky{margin:0 -16px 14px;padding:10px 16px}
+  .sep{display:none}
+}
+@media (max-width:560px){
+  .bar{padding:8px 12px;gap:6px}.hdr-actions{gap:4px}
+  .tt svg{display:none}.tt{padding:6px 2px}
+  a.hp-btn{padding:6px 10px}
+  .bar h1{font-size:15px;gap:8px}
+}
+/* avatar menu */
+.menu{position:fixed;right:14px;top:calc(var(--hdr,57px) - 4px);width:250px;background:var(--panel);border:1px solid var(--line);border-radius:12px;
+  box-shadow:0 12px 40px var(--shadow);padding:6px;z-index:20}
+.menu .who{display:flex;gap:10px;align-items:center;padding:10px;border-bottom:1px solid var(--line);margin-bottom:4px}
+.menu .who small{display:block;color:var(--muted)}
+.menu .who .avatar{cursor:default}
+.menu [role=menuitem]{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border-radius:8px;color:var(--text);text-decoration:none;
+  background:none;border:0;font:inherit;cursor:pointer;text-align:left}
+.menu [role=menuitem]:hover,.menu [role=menuitem]:focus-visible{background:var(--panel2);outline:none}
+.menu [role=menuitem] svg{width:17px;height:17px;color:var(--muted);flex:none}
+.menu hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+.menu .ext{margin-left:auto;color:var(--muted);font-size:12px}
+/* windows (settings, feedback) */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);display:grid;place-items:center;z-index:30;padding:16px}
+.modal{width:min(900px,100%);height:min(660px,100%);background:var(--bg);border:1px solid var(--line);border-radius:14px;display:grid;
+  grid-template-columns:210px minmax(0,1fr);overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.modal .mside{background:var(--panel);border-right:1px solid var(--line);padding:16px 10px;display:flex;flex-direction:column;gap:2px}
+.modal .mside h3{margin:2px 10px 12px;font-size:15px}
+.modal .mbody{padding:22px 26px 30px;overflow:auto;position:relative}
+.modal .mbody > h2{font-size:18px;margin:0 0 4px}
+.xbtn{position:absolute;right:12px;top:10px}
+@media (max-width:700px){.modal{grid-template-columns:1fr;grid-template-rows:auto 1fr}.modal .mside{flex-direction:row;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .modal .mside h3{display:none}.mside button{width:auto;white-space:nowrap}}
+.small-modal{width:min(500px,100%);height:auto;max-height:100%;overflow:auto;display:block;padding:20px 22px}
+.sec{border-top:1px solid var(--line);padding:16px 0}
+.sec:first-of-type{border-top:0}
+.sec h3{font-size:14px;margin:0 0 4px}
+.pwf{position:relative;max-width:400px}
+.pwf input{padding-right:42px}
+.pwf .eye{position:absolute;right:3px;top:3px;width:32px;height:28px;border:0;border-radius:6px;background:none;color:var(--muted);cursor:pointer;display:grid;place-items:center}
+.pwf .eye:hover{color:var(--text);background:var(--panel2)}
+.pwf .eye svg{width:17px;height:17px}
+.stack{display:flex;flex-direction:column;gap:10px;max-width:400px;margin-top:10px}
+.setrow{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:12px 0;border-top:1px solid var(--line)}
+.setrow:first-child{border-top:0}
+.setrow small{display:block;color:var(--muted);font-size:12px;margin-top:2px}
+.setrow input[type=number]{width:100px}
+.pk{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--line);border-radius:9px;background:var(--panel);margin-top:8px}
+.pk small{display:block;color:var(--muted)}
+.pk > svg{width:20px;height:20px;flex:none;color:var(--muted)}
+.pk .grow{flex:1;min-width:0}
+.about-card{border:1px solid var(--line);border-radius:12px;padding:16px;background:var(--panel);margin:14px 0}
+.about-card h3{display:flex;gap:10px;align-items:center;margin:0 0 8px;font-size:19px}
+.links a{display:block;margin:6px 0}
+.chips{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chips button{background:var(--panel);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:9px;font:inherit;cursor:pointer}
+.chips button[aria-pressed="true"]{border-color:var(--accent);background:var(--panel2);font-weight:650}
+.dest{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dest label{display:flex;gap:8px;align-items:flex-start;border:1px solid var(--line);border-radius:9px;padding:10px;cursor:pointer;background:var(--panel)}
+.dest label:has(input:checked){border-color:var(--accent)}
+.dest input{width:18px;height:18px;min-height:0;flex:none;margin-top:2px;accent-color:var(--accent)}
+.dest label.off{opacity:.5;cursor:not-allowed}
+.fbcol{display:flex;flex-direction:column;gap:12px}
+.helpdoc h3{font-size:15px;margin:22px 0 6px}
+.helpdoc p,.helpdoc li{max-width:780px}
+.helpdoc code{font-family:var(--mono);font-size:12.5px;background:var(--panel2);padding:1px 5px;border-radius:5px}
+button.btn[aria-pressed="true"]{background:var(--panel2);border-color:var(--accent);color:var(--text)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+.seg label{display:flex;align-items:center;gap:6px;padding:8px 14px;cursor:pointer;color:var(--muted);border-right:1px solid var(--line)}
+.seg label:last-child{border-right:0}
+.seg input{position:absolute;opacity:0;width:1px;height:1px}
+.seg label:has(input:checked){background:var(--accent);color:var(--accent-ink);font-weight:650}
+.seg label:has(input:focus-visible){outline:2px solid var(--accent);outline-offset:-2px}
+.cfg{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,460px),1fr));gap:12px;align-items:start}
+.cfg .card{margin:0}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:12px}
+.src{font-size:12px;color:var(--muted)}
+.src b{color:var(--text);font-weight:600}
+dl.about{display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 14px;margin:8px 0 0}
+dl.about dt{color:var(--muted);font-size:12px;padding-top:1px}
+dl.about dd{margin:0;font-family:var(--mono);font-size:12.5px;overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1><img id="brand-logo" class="brand-logo default" src="/favicon.svg" alt=""><span id="brand-title">Homepage Editor</span></h1>
+    <span class="spacer"></span>
+    <div class="hdr-actions">
+    <a id="hp-link" class="hp-btn" href="#" target="_blank" rel="noopener" hidden>Open Homepage <span aria-hidden="true">↗</span></a>
+    <span class="sep" aria-hidden="true"></span>
+    <button class="ghost" id="fb-btn" title="Share feedback or ask a question"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/></svg><span class="lbl">Feedback</span></button>
+    <button class="ghost icon-only" id="help-btn" aria-label="Help" title="Help"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.5 9.3a2.6 2.6 0 0 1 5 .9c0 1.8-2.5 2.2-2.5 3.8"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/></svg></button>
+    <a class="support" id="support-btn" href="#" target="_blank" rel="noopener" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 21s-7.5-4.6-9.6-9.3C.8 8.1 3.1 4.5 6.7 4.5c2.1 0 3.6 1.1 5.3 3 1.7-1.9 3.2-3 5.3-3 3.6 0 5.9 3.6 4.3 7.2C19.5 16.4 12 21 12 21z"/></svg><span class="lbl">Support us</span></a>
+    <button class="tt" id="theme-toggle" role="switch" aria-checked="false" aria-label="Dark mode" title="Switch between light and dark">
+      <svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><path d="M12 2v2.2M12 19.8V22M2 12h2.2M19.8 12H22M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6"/></svg>
+      <span class="track" aria-hidden="true"><span class="knob"></span></span>
+      <svg class="moon" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20.5 14.6A8.6 8.6 0 0 1 9.4 3.5a8.6 8.6 0 1 0 11.1 11.1z"/></svg>
+    </button>
+    <button class="avatar" id="avatar" aria-haspopup="menu" aria-expanded="false" title="Account and settings">?</button>
+    <span class="nologin" id="nologin" hidden title="Login is switched off in setup.sh: anyone who can open this page can edit Homepage">No login</span>
+    </div>
+  </div>
+</header>
+<div class="shell">
+  <aside class="side" id="side" aria-label="Sections">
+    <nav id="tabs" role="tablist" aria-orientation="vertical"></nav>
+    <span class="grow"></span>
+    <div class="foot" id="side-foot"></div>
+  </aside>
+  <main id="main"></main>
+</div>
+<div id="menu" class="menu" role="menu" hidden></div>
+<div id="ov"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+const IC={
+  services:'<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>',
+  bookmarks:'<path d="M6 3h12v18l-6-4-6 4z"/>',
+  layout:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M9 9v11"/>',
+  appearance:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="m3 16 5-5 4 4 3-3 6 6"/><circle cx="16" cy="9" r="1.5"/>',
+  files:'<path d="M6 2h8l5 5v15H6z"/><path d="M14 2v5h5"/>',
+  backups:'<path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>',
+  help:'<circle cx="12" cy="12" r="9.5"/><path d="M9.5 9.3a2.6 2.6 0 0 1 5 .9c0 1.8-2.5 2.2-2.5 3.8"/><circle cx="12" cy="17.2" r=".6" fill="currentColor"/>',
+  general:'<path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/>',
+  security:'<path d="M12 3 4 6v6c0 4.5 3.4 8.3 8 9 4.6-.7 8-4.5 8-9V6z"/>',
+  link:'<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+  about:'<circle cx="12" cy="12" r="9.5"/><path d="M12 11v6M12 7.5v.5"/>',
+  settings:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-2.9 1.2V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-2.9-1.2l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1A1.7 1.7 0 0 0 3 14a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.2-2.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1A1.7 1.7 0 0 0 10 3.1V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 2.9 1.2l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0 1.2 2.9H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+  docs:'<path d="M4 4h6a3 3 0 0 1 3 3v13a2 2 0 0 0-2-2H4zM20 4h-6a3 3 0 0 0-3 3v13a2 2 0 0 1 2-2h7z"/>',
+  logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>',
+  key:'<circle cx="8" cy="9" r="4"/><path d="M2 21v-1a6 6 0 0 1 9.5-4.9"/><circle cx="17.5" cy="14.5" r="2.5"/><path d="M17.5 17v4.5l1.5-1-1.5-1.2"/>',
+  eye:'<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>'};
+const DISCORD='<path fill="currentColor" stroke="none" d="M19.6 5.6A17 17 0 0 0 15.4 4.3l-.5 1.1a15.7 15.7 0 0 0-5.8 0l-.5-1.1a17 17 0 0 0-4.2 1.3A17.6 17.6 0 0 0 1.4 17.4a17 17 0 0 0 5.2 2.6l1.1-1.8a11 11 0 0 1-1.7-.8l.4-.3a12.2 12.2 0 0 0 11.2 0l.4.3-1.7.8 1.1 1.8a17 17 0 0 0 5.2-2.6 17.6 17.6 0 0 0-3-11.8zM8.7 14.9c-1 0-1.9-1-1.9-2.1s.8-2.1 1.9-2.1 1.9 1 1.9 2.1-.8 2.1-1.9 2.1zm6.6 0c-1 0-1.9-1-1.9-2.1s.8-2.1 1.9-2.1 1.9 1 1.9 2.1-.8 2.1-1.9 2.1z"/>';
+function icon(name){const t=document.createElement("template");
+  t.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(name==="discord"?DISCORD:IC[name])+'</svg>';
+  return t.content.firstChild;}
+const TABS = [["services","Services"],["bookmarks","Bookmarks"],["layout","Layout & tabs"],
+              ["appearance","Look & background"],["files","Files"],["backups","Backups"],["help","Help"]];
+const S = {tab:"services", dirty:{}, data:{}, info:{}};
+
+/* ---------- helpers ---------- */
+function h(tag, attrs, ...kids){
+  const e=document.createElement(tag);
+  for(const [k,v] of Object.entries(attrs||{})){
+    if(v===undefined||v===null||v===false) continue;
+    if(k.startsWith("on")) e.addEventListener(k.slice(2),v);
+    else if(k==="value") e.value=v;
+    else if(k==="checked") e.checked=v;
+    else e.setAttribute(k, v===true?"":v);
+  }
+  for(const c of kids.flat()){ if(c===null||c===undefined||c===false) continue;
+    e.append(c instanceof Node?c:document.createTextNode(String(c))); }
+  return e;
+}
+async function api(method,url,body){
+  const r=await fetch(url,{method,headers:{"Content-Type":"application/json","X-Requested-With":"homepage-editor"},
+    body:body===undefined?undefined:JSON.stringify(body)});
+  const t=await r.text(); let d; try{d=JSON.parse(t)}catch(e){d={error:t}}
+  if(r.status===401&&d.login){S.dirty={};location.href="/login";throw new Error("Please log in again.");}
+  if(!r.ok) throw new Error(d.error||("HTTP "+r.status));
+  return d;
+}
+let toastTimer;
+function toast(msg,kind){const t=document.getElementById("toast");t.textContent=msg;t.className=kind||"";
+  t.style.display="block";clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.style.display="none",kind==="bad"?12000:7000);}
+function savedMsg(res){
+  if(!res.changed) return res.message||"No changes to save.";
+  const b=res.backup?("Previous version backed up: "+res.backup.date+" "+res.backup.time):
+    "The previous version was already in your newest backup.";
+  return "Saved. "+b+"\nIn Homepage, click the refresh icon (bottom right) to see the change.";
+}
+function markDirty(key){if(!key)return;S.dirty[key]=true;updateDirty();}
+function updateDirty(){document.querySelectorAll("[data-dirty]").forEach(e=>{e.hidden=!S.dirty[e.dataset.dirty]});}
+window.addEventListener("beforeunload",e=>{if(Object.values(S.dirty).some(Boolean)){e.preventDefault();e.returnValue="";}});
+function move(arr,i,d){const j=i+d;if(j<0||j>=arr.length)return false;[arr[i],arr[j]]=[arr[j],arr[i]];return true;}
+function field(label,input,opts){return h("label",{class:"f"+(opts&&opts.wide?" wide":"")},label,input,opts&&opts.help?h("span",{class:"help"},opts.help):null);}
+function text(obj,key,dk,ph,onchange){return h("input",{value:obj[key]??"",placeholder:ph||"",
+  oninput:e=>{obj[key]=e.target.value;markDirty(dk);if(onchange)onchange();}});}
+function select(obj,key,dk,options,onchange){
+  const s=h("select",{onchange:e=>{const o=options[e.target.selectedIndex];obj[key]=o[0];markDirty(dk);if(onchange)onchange();}},
+    options.map(o=>h("option",{},o[1])));
+  const idx=options.findIndex(o=>o[0]===obj[key]||(o[0]===null&&(obj[key]===undefined||obj[key]===null)));
+  if(idx>=0) s.selectedIndex=idx;
+  else if(obj[key]!==undefined&&obj[key]!==null&&obj[key]!==""){s.append(h("option",{},String(obj[key])+" (current)"));
+    options.push([obj[key],String(obj[key])]);s.selectedIndex=options.length-1;}
+  return s;
+}
+const TRI=[[null,"(default)"],[true,"Yes"],[false,"No"]];
+function confirmTwice(msg){return window.confirm(msg);}
+
+/* ---------- tabs ---------- */
+function go(tab){S.tab=tab;renderTabs();show();window.scrollTo(0,0);}
+function renderTabs(){
+  const nav=document.getElementById("tabs");nav.innerHTML="";
+  for(const [id,label] of TABS){
+    nav.append(h("button",{role:"tab","aria-selected":String(S.tab===id),onclick:()=>go(id)},icon(id),label));
+  }
+}
+async function show(){
+  const m=document.getElementById("main");m.innerHTML="";m.append(h("div",{class:"empty"},"Loading…"));
+  try{ await ({services:showItems,bookmarks:showItems,layout:showLayout,appearance:showAppearance,files:showFiles,backups:showBackups,help:showHelp})[S.tab](S.tab); }
+  catch(e){m.innerHTML="";m.append(h("div",{class:"warnbox"},"Could not load: "+e.message));}
+}
+
+/* ---------- services & bookmarks ---------- */
+const ITEM_DEF={
+  services:{file:"services.yaml",kind:"service",title:"Services",fields:[
+    ["icon","Icon","e.g. radarr.svg, mdi-home or a full URL"],
+    ["href","Link (opens when clicked)","http://192.168.1.10:8080"],
+    ["description","Description",""],
+    ["siteMonitor","Status check URL","gives the green/red dot"],
+    ["ping","Ping host (instead of status URL)","e.g. 192.168.1.20"],
+    ["statusStyle","Status style",null,[["","(use global)"],["dot","Dot"],["basic","UP / DOWN text"]]],
+    ["target","Open in",null,[["","(use global)"],["_blank","New tab"],["_self","Same tab"],["_top","Top window"]]]],
+    adv:"Widget and other options, written as YAML. Example:\nwidget:\n  type: radarr\n  url: http://192.168.1.10:7878\n  key: your-api-key"},
+  bookmarks:{file:"bookmarks.yaml",kind:"bookmark",title:"Bookmarks",fields:[
+    ["abbr","Abbreviation (2 letters)","GH"],["icon","Icon (wins over abbreviation)",""],
+    ["href","Link","https://"],["description","Description (default: the site's address)",""]],
+    adv:"Any other bookmark options, as YAML. Usually empty."}
+};
+async function showItems(tab){
+  const def=ITEM_DEF[tab];
+  const data=await api("GET","/api/"+tab);S.data[tab]=data;S.dirty[tab]=false;
+  const m=document.getElementById("main");
+  const list=h("div",{});
+  function render(){
+    list.innerHTML="";
+    data.groups.forEach((g,gi)=>{
+      const items=h("div",{});
+      g.items.forEach((it,ii)=>items.append(itemRow(g,gi,it,ii)));
+      if(!g.items.length) items.append(h("div",{class:"empty"},"No "+def.kind+"s in this group yet."));
+      list.append(h("section",{class:"card"},
+        h("div",{class:"ghead"},
+          h("input",{class:"gname",value:g.name,"aria-label":"Group name",oninput:e=>{g.name=e.target.value;markDirty(tab);}}),
+          h("span",{class:"count"},g.items.length+" "+def.kind+(g.items.length===1?"":"s")),
+          h("button",{class:"btn icon",title:"Move group up","aria-label":"Move group up",onclick:()=>{if(move(data.groups,gi,-1)){markDirty(tab);render();}}},"↑"),
+          h("button",{class:"btn icon",title:"Move group down","aria-label":"Move group down",onclick:()=>{if(move(data.groups,gi,1)){markDirty(tab);render();}}},"↓"),
+          h("button",{class:"btn",onclick:()=>{const n={name:"New "+def.kind,extra:"",_open:true};def.fields.forEach(f=>n[f[0]]="");g.items.push(n);markDirty(tab);render();}},"+ Add "+def.kind),
+          h("button",{class:"btn danger",onclick:()=>{if(confirmTwice("Delete the group '"+g.name+"' and its "+g.items.length+" "+def.kind+"s?")){data.groups.splice(gi,1);markDirty(tab);render();}}},"Delete group")),
+        items));
+    });
+    list.append(h("button",{class:"btn",onclick:()=>{data.groups.push({name:"New group",items:[]});markDirty(tab);render();}},"+ Add group"));
+  }
+  function itemRow(g,gi,it,ii){
+    const sub=h("span",{},it.href||"");
+    const head=h("div",{class:"ihead"},
+      h("button",{class:"toggle","aria-expanded":String(!!it._open),onclick:()=>{it._open=!it._open;render();}},
+        h("span",{"aria-hidden":"true"},it._open?"▾":"▸"),h("b",{},it.name||"(no name)"),sub),
+      h("button",{class:"btn icon",title:"Move up","aria-label":"Move up",onclick:()=>{if(move(g.items,ii,-1)){markDirty(tab);render();}}},"↑"),
+      h("button",{class:"btn icon",title:"Move down","aria-label":"Move down",onclick:()=>{if(move(g.items,ii,1)){markDirty(tab);render();}}},"↓"),
+      h("select",{"aria-label":"Move to group",style:"width:auto",onchange:e=>{const t=+e.target.value;if(t>=0&&t!==gi){g.items.splice(ii,1);data.groups[t].items.push(it);markDirty(tab);render();}}},
+        h("option",{value:"-1"},"Move to…"),data.groups.map((x,xi)=>xi===gi?null:h("option",{value:String(xi)},x.name))),
+      h("button",{class:"btn",title:"Duplicate",onclick:()=>{const c=JSON.parse(JSON.stringify(it));c.name=it.name+" copy";c._open=true;g.items.splice(ii+1,0,c);markDirty(tab);render();}},"Copy"),
+      h("button",{class:"btn danger",onclick:()=>{if(confirmTwice("Delete '"+it.name+"'?")){g.items.splice(ii,1);markDirty(tab);render();}}},"Delete"));
+    const row=h("div",{class:"item"},head);
+    if(it._open){
+      const grid=h("div",{class:"grid"},
+        field("Name",text(it,"name",tab,"",()=>{head.querySelector("b").textContent=it.name||"(no name)";})),
+        def.fields.map(([k,label,ph,opts])=>field(label,opts?select(it,k,tab,opts.map(o=>[o[0],o[1]])):
+          text(it,k,tab,ph,k==="href"?()=>{sub.textContent=it.href;}:null))),
+        field("Advanced (YAML)",h("textarea",{rows:Math.max(4,(it.extra||"").split("\n").length+1),value:it.extra||"",
+          spellcheck:"false",placeholder:def.adv,oninput:e=>{it.extra=e.target.value;markDirty(tab);}}),
+          {wide:true,help:"For widgets, server/container, showStats and anything not in the boxes above. Indent with spaces, not tabs."}));
+      row.append(h("div",{class:"ibody"},grid));
+    }
+    return row;
+  }
+  render();
+  const save=h("button",{class:"btn primary",disabled:data.unsupported.length>0,onclick:async()=>{
+    save.disabled=true;
+    try{const res=await api("PUT","/api/"+tab,{groups:data.groups});toast(savedMsg(res),"ok");await showItems(tab);}
+    catch(e){toast(e.message,"bad");save.disabled=false;}
+  }},"Save "+def.title.toLowerCase());
+  m.innerHTML="";
+  m.append(h("p",{class:"intro"},"Click a "+def.kind+" to open it. Use ↑ ↓ to change the order, and \"Move to…\" to put it in another group. Nothing changes on Homepage until you press Save; each save first makes a dated backup."),
+    data.unsupported.length?h("div",{class:"warnbox"},"This file contains "+data.unsupported.join(", ")+". The form cannot edit that safely, so saving is turned off here. Use the Files tab."):"",
+    h("div",{class:"toolbar sticky"},save,h("button",{class:"btn",onclick:()=>{if(!S.dirty[tab]||confirmTwice("Throw away your unsaved changes?"))showItems(tab);}},"Undo unsaved changes"),
+      h("button",{class:"btn",onclick:()=>{data.groups.forEach(g=>g.items.forEach(i=>i._open=true));render();}},"Open all"),
+      h("button",{class:"btn",onclick:()=>{data.groups.forEach(g=>g.items.forEach(i=>i._open=false));render();}},"Close all"),
+      h("span",{class:"dirty","data-dirty":tab,hidden:true},"● Unsaved changes")),
+    list,
+    h("p",{class:"help"},"Saving from this form rewrites "+def.file+" neatly and drops # comments. The previous version is always in Backups."));
+  updateDirty();
+}
+
+/* ---------- layout ---------- */
+async function showLayout(){
+  const d=await api("GET","/api/settings");S.dirty.layout=false;
+  const rows=d.layout, m=document.getElementById("main");
+  const known=new Map();d.serviceGroups.forEach(n=>known.set(n,"services"));d.bookmarkGroups.forEach(n=>known.set(n,known.has(n)?"both":"bookmarks"));
+  const body=h("tbody",{});const adder=h("div",{class:"toolbar"});
+  const tabsList=h("datalist",{id:"tablist"});
+  function render(){
+    tabsList.innerHTML="";[...new Set(rows.map(r=>r.tab).filter(Boolean))].forEach(t=>tabsList.append(h("option",{value:t})));
+    body.innerHTML="";
+    rows.forEach((r,i)=>{
+      const kind=known.get(r.name);
+      body.append(h("tr",{},
+        h("td",{},h("button",{class:"btn icon","aria-label":"Move up",onclick:()=>{if(move(rows,i,-1)){markDirty("layout");render();}}},"↑"),
+                  h("button",{class:"btn icon","aria-label":"Move down",onclick:()=>{if(move(rows,i,1)){markDirty("layout");render();}}},"↓")),
+        h("td",{class:"name"},h("b",{},r.name)," ",h("span",{class:"tag"+(kind?"":" bad")},kind==="both"?"services + bookmarks (rename one!)":kind||"group not found")),
+        h("td",{},h("input",{list:"tablist",value:r.tab||"",placeholder:"(all tabs)","aria-label":"Tab",oninput:e=>{r.tab=e.target.value;markDirty("layout");}})),
+        h("td",{},select(r,"style","layout",[["","(default)"],["row","Row (cards side by side)"],["column","Column (stacked)"]])),
+        h("td",{},h("input",{type:"number",min:"1",max:"12",value:r.columns??"",placeholder:"auto","aria-label":"Columns",style:"width:80px;min-width:80px",oninput:e=>{r.columns=e.target.value===""?null:+e.target.value;markDirty("layout");}})),
+        h("td",{},select(r,"header","layout",[[null,"(shown)"],[true,"Shown"],[false,"Hidden"]])),
+        h("td",{},select(r,"initiallyCollapsed","layout",TRI.map(x=>[...x]))),
+        h("td",{},select(r,"useEqualHeights","layout",TRI.map(x=>[...x]))),
+        h("td",{},h("input",{value:r.icon||"",placeholder:"e.g. mdi-server","aria-label":"Group icon",oninput:e=>{r.icon=e.target.value;markDirty("layout");}})),
+        h("td",{},h("button",{class:"btn danger",onclick:()=>{rows.splice(i,1);markDirty("layout");render();}},"Remove"))));
+    });
+    adder.innerHTML="";
+    const missing=[...known.keys()].filter(n=>!rows.some(r=>r.name===n));
+    if(missing.length){
+      const sel=h("select",{style:"width:auto"},missing.map(n=>h("option",{},n)));
+      adder.append(h("span",{class:"help"},"Groups not in the layout yet:"),sel,
+        h("button",{class:"btn",onclick:()=>{rows.push({name:sel.value,tab:"",style:"",icon:"",columns:null,header:null,initiallyCollapsed:null,useEqualHeights:null,other:{}});markDirty("layout");render();}},"+ Add to layout"));
+    } else adder.append(h("span",{class:"help"},"All groups are in the layout."));
+  }
+  render();
+  const save=h("button",{class:"btn primary",onclick:async()=>{save.disabled=true;
+    try{const res=await api("PUT","/api/settings/layout",{layout:rows});toast(savedMsg(res),"ok");await showLayout();}
+    catch(e){toast(e.message,"bad");save.disabled=false;}}},"Save layout");
+  m.innerHTML="";
+  m.append(h("p",{class:"intro"},"Each row is a group. The order here is the order on the page, and also the order of the tabs. Type a tab name to put a group on that tab; groups with an empty tab appear on every tab. To rename a group, rename it in Services or Bookmarks first, then add it here again."),
+    h("div",{class:"toolbar sticky"},save,h("button",{class:"btn",onclick:()=>{if(!S.dirty.layout||confirmTwice("Throw away your unsaved changes?"))showLayout();}},"Undo unsaved changes"),h("span",{class:"dirty","data-dirty":"layout",hidden:true},"● Unsaved changes")),
+    h("div",{class:"card scroll"},tabsList,h("table",{class:"tbl layout-tbl"},
+      h("thead",{},h("tr",{},["Order","Group","Tab","Style","Columns","Header","Start collapsed","Equal heights","Icon",""].map(t=>h("th",{},t)))),body)),
+    adder);
+  updateDirty();
+}
+
+/* ---------- appearance ---------- */
+const COLORS=["slate","gray","zinc","neutral","stone","amber","yellow","lime","green","emerald","teal","cyan","sky","blue","indigo","violet","purple","fuchsia","pink","rose","red","white"];
+const LANGS=["ca","de","en","es","fr","he","hr","hu","it","nb-NO","nl","pt","ru","sv","vi","zh-Hans","zh-Hant"];
+const BLUR=[[null,"Off",0],["sm","Small (sm)",4],["","Normal",8],["md","Medium (md)",12],["lg","Large (lg)",16],["xl","Extra large (xl)",24],["2xl","2xl",40],["3xl","3xl",64]];
+const CARDBLUR=[["","Off",0],["xs","xs",2],["sm","sm",4],["md","md",12],["lg","lg",16],["xl","xl",24],["2xl","2xl",40],["3xl","3xl",64]];
+const SAT=[0,50,100,150,200], BRI=[0,50,75,90,95,100,105,110,125,150,200];
+async function showAppearance(){
+  const d=await api("GET","/api/settings");S.dirty.appearance=false;
+  const F=d.fields, B=d.background, m=document.getElementById("main"), dk="appearance";
+  const opt=a=>[["","(default)"],...a.map(x=>Array.isArray(x)?x:[x,x])];
+  const img=h("div",{class:"img"}), cards=h("div",{class:"cards"},h("div",{class:"pc pt"},F.title||"Homepage"),
+    ...["Radarr","Sonarr","Pi-hole","Portainer","Immich","Gotify"].map(n=>h("div",{class:"pc"},n)));
+  function preview(){
+    const u=(B.image||"").trim(); img.style.backgroundImage=u?"url(\""+u.replace(/"/g,"%22")+"\")":"none";
+    const blur=(BLUR.find(b=>b[0]===(B.blur===undefined?null:B.blur))||BLUR[0])[2];
+    img.style.filter="blur("+blur+"px) saturate("+(B.saturate??100)+"%) brightness("+(B.brightness??100)+"%)";
+    img.style.opacity=(B.opacity??100)/100;
+    const cb=(CARDBLUR.find(b=>b[0]===(F.cardBlur||""))||CARDBLUR[0])[2];
+    cards.querySelectorAll(".pc").forEach(c=>{c.style.backdropFilter=c.style.webkitBackdropFilter=cb?"blur("+cb+"px)":"none";});
+    cards.firstChild.textContent=F.title||"Homepage";
+  }
+  const pv=()=>{markDirty(dk);preview();};
+  const opacityOut=h("output",{},B.opacity??"–");
+  const opacityOn=h("input",{type:"checkbox",checked:B.opacity!==undefined&&B.opacity!==null,onchange:e=>{B.opacity=e.target.checked?(+opRange.value):null;opRange.disabled=!e.target.checked;opacityOut.textContent=B.opacity??"–";pv();}});
+  const opRange=h("input",{type:"range",min:"0",max:"100",step:"5",value:B.opacity??100,disabled:!(B.opacity!==undefined&&B.opacity!==null),"aria-label":"Opacity",
+    oninput:e=>{B.opacity=+e.target.value;opacityOut.textContent=B.opacity;pv();}});
+  if(B.blur===undefined) B.blur=null;
+  const extra={v:d.extra||""};
+  const save=h("button",{class:"btn primary",onclick:async()=>{save.disabled=true;
+    try{const res=await api("PUT","/api/settings/appearance",{fields:F,background:B,extra:extra.v});toast(savedMsg(res),"ok");await showAppearance();}
+    catch(e){toast(e.message,"bad");save.disabled=false;}}},"Save look & background");
+  m.innerHTML="";
+  m.append(h("p",{class:"intro"},"Change the look of the whole page. \"(default)\" means the setting is left out and Homepage uses its own default."),
+    h("div",{class:"toolbar sticky"},save,h("button",{class:"btn",onclick:()=>{if(!S.dirty[dk]||confirmTwice("Throw away your unsaved changes?"))showAppearance();}},"Undo unsaved changes"),h("span",{class:"dirty","data-dirty":dk,hidden:true},"● Unsaved changes")),
+    h("div",{class:"cols"},
+      h("section",{class:"card"},h("h2",{},"Background"),
+        h("div",{class:"grid"},
+          field("Image URL",text(B,"image",dk,"https://… or /images/file.jpg",preview),{wide:true,help:"A full web address, or /images/name.jpg for a file in Homepage's public/images folder (restart Homepage after adding new files there)."}),
+          field("Blur",select(B,"blur",dk,BLUR.map(b=>[b[0],b[1]]),preview)),
+          field("Saturation (color strength)",select(B,"saturate",dk,[[null,"(default)"],...SAT.map(v=>[v,v+"%"+(v===0?" (grey)":"")])],preview)),
+          field("Brightness",select(B,"brightness",dk,[[null,"(default)"],...BRI.map(v=>[v,v+"%"])],preview)),
+          field("Opacity",h("div",{class:"range"},opacityOn,opRange,opacityOut),{help:"Tick to set. Lower = more of the plain theme color shows through."}))),
+      h("section",{class:"card"},h("h2",{},"Preview (approximate)"),
+        h("div",{class:"preview"},img,cards),
+        h("p",{class:"help"},"Shows the image with your blur, saturation, brightness and opacity, and the card blur. The real page will differ slightly."))),
+    h("section",{class:"card"},h("h2",{},"Page"),h("div",{class:"grid"},
+      field("Title (browser tab)",text(F,"title",dk,"",preview)),
+      field("Description",text(F,"description",dk,"")),
+      field("Favicon",text(F,"favicon",dk,"URL or /images/icon.png")),
+      field("Theme",select(F,"theme",dk,opt([["dark","Dark"],["light","Light"]]))),
+      field("Color palette",select(F,"color",dk,opt(COLORS))),
+      field("Header style",select(F,"headerStyle",dk,opt([["underlined","Underlined"],["boxed","Boxed"],["clean","Clean"],["boxedWidgets","Boxed widgets"]]))),
+      field("Language",select(F,"language",dk,opt(LANGS))),
+      field("Links open in",select(F,"target",dk,opt([["_blank","New tab"],["_self","Same tab"],["_top","Top window"]]))),
+      field("Full width",select(F,"fullWidth",dk,TRI.map(x=>[...x]))),
+      field("Hide version number",select(F,"hideVersion",dk,TRI.map(x=>[...x]))))),
+    h("section",{class:"card"},h("h2",{},"Cards & groups"),h("div",{class:"grid"},
+      field("Status style",select(F,"statusStyle",dk,opt([["dot","Dot"],["basic","UP / DOWN text"]])),{help:"Default shows response time in ms."}),
+      field("Card blur",select(F,"cardBlur",dk,CARDBLUR.map(b=>[b[0],b[1]]),preview),{help:"Does not combine with background blur/saturation/brightness."}),
+      field("Icon style",select(F,"iconStyle",dk,opt([["theme","Match theme color"]])),{help:"Default is gradient."}),
+      field("Bookmarks style",select(F,"bookmarksStyle",dk,opt([["icons","Icons only"]]))),
+      field("Equal card heights",select(F,"useEqualHeights",dk,TRI.map(x=>[...x]))),
+      field("Max columns (column-style groups)",h("input",{type:"number",min:"5",max:"8",value:F.maxGroupColumns??"",placeholder:"4",oninput:e=>{F.maxGroupColumns=e.target.value===""?null:+e.target.value;markDirty(dk);}}),{help:"5–8. Only for groups without style: row."}),
+      field("Max bookmark columns",h("input",{type:"number",min:"1",max:"8",value:F.maxBookmarkGroupColumns??"",placeholder:"6",oninput:e=>{F.maxBookmarkGroupColumns=e.target.value===""?null:+e.target.value;markDirty(dk);}})),
+      field("Disable collapsing groups",select(F,"disableCollapse",dk,TRI.map(x=>[...x]))),
+      field("All groups start collapsed",select(F,"groupsInitiallyCollapsed",dk,TRI.map(x=>[...x]))),
+      field("Hide widget errors",select(F,"hideErrors",dk,TRI.map(x=>[...x]))),
+      field("Show container stats",select(F,"showStats",dk,TRI.map(x=>[...x]))))),
+    h("section",{class:"card"},h("h2",{},"Other settings (YAML)"),
+      h("p",{class:"help"},"Everything else in settings.yaml, e.g. providers (API keys) and quicklaunch. Edit carefully; it is checked before saving."),
+      h("textarea",{rows:Math.max(5,extra.v.split("\n").length+1),value:extra.v,spellcheck:"false","aria-label":"Other settings",oninput:e=>{extra.v=e.target.value;markDirty(dk);}})));
+  preview();updateDirty();
+}
+
+/* ---------- files ---------- */
+async function showFiles(){
+  const info=await api("GET","/api/info");const m=document.getElementById("main");
+  const sel=h("select",{style:"width:auto","aria-label":"File"},info.files.map(f=>h("option",{},f+(info.existing.includes(f)?"":" (new)"))));
+  if(S.file) sel.selectedIndex=Math.max(0,info.files.indexOf(S.file));
+  const ta=h("textarea",{rows:"28",spellcheck:"false","aria-label":"File contents",oninput:()=>markDirty("files")});
+  async function load(){S.file=info.files[sel.selectedIndex];const d=await api("GET","/api/file/"+S.file);ta.value=d.text;S.dirty.files=false;updateDirty();}
+  sel.addEventListener("change",async()=>{if(S.dirty.files&&!confirmTwice("Throw away your unsaved changes?")){sel.selectedIndex=info.files.indexOf(S.file);return;}await load();});
+  const save=h("button",{class:"btn primary",onclick:async()=>{save.disabled=true;
+    try{const res=await api("PUT","/api/file/"+S.file,{text:ta.value});toast(savedMsg(res),"ok");await load();}
+    catch(e){toast(e.message,"bad");}finally{save.disabled=false;}}},"Save file");
+  m.innerHTML="";
+  m.append(h("p",{class:"intro"},"Edit any config file directly. Use this for widgets.yaml (the top bar), custom.css, custom.js and anything the forms don't cover. YAML files are checked before saving, and a dated backup is made first. Careful: API keys are visible here."),
+    h("div",{class:"toolbar sticky"},sel,save,
+      h("button",{class:"btn",onclick:async()=>{try{await api("POST","/api/validate/"+S.file,{text:ta.value});toast("Looks valid.","ok");}catch(e){toast(e.message,"bad");}}},"Check"),
+      h("button",{class:"btn",onclick:()=>{if(!S.dirty.files||confirmTwice("Throw away your unsaved changes?"))load();}},"Reload"),
+      h("span",{class:"dirty","data-dirty":"files",hidden:true},"● Unsaved changes")),
+    ta);
+  await load();
+}
+
+/* ---------- backups ---------- */
+async function showBackups(){
+  const d=await api("GET","/api/backups");const m=document.getElementById("main");
+  const note=h("input",{placeholder:"Optional note, e.g. before trying a new background",maxlength:"200",style:"flex:1 1 260px","aria-label":"Backup note"});
+  const out=h("div",{});
+  const body=h("tbody",{});
+  d.backups.forEach((b,i)=>{
+    const diffBox=h("tr",{hidden:true},h("td",{colspan:"5"},h("pre",{class:"diff"})));
+    body.append(h("tr",{},
+      h("td",{},h("b",{},b.date),h("br"),b.time,i===0?h("div",{},h("span",{class:"tag"},"newest")):null),
+      h("td",{},b.reason,b.note?h("div",{class:"help"},"Note: "+b.note):null),
+      h("td",{class:"help"},b.files.join(", ")),
+      h("td",{style:"white-space:nowrap"},
+        h("button",{class:"btn",onclick:async()=>{if(!diffBox.hidden){diffBox.hidden=true;return;}
+          const r=await api("GET","/api/backups/"+b.id+"/diff");const pre=diffBox.querySelector("pre");pre.innerHTML="";
+          r.diff.split("\n").forEach(l=>pre.append(h("span",{class:l.startsWith("+")&&!l.startsWith("+++")?"add":l.startsWith("-")&&!l.startsWith("---")?"del":""},l+"\n")));
+          diffBox.hidden=false;}},"What changed since"),
+        " ",
+        h("button",{class:"btn primary",onclick:async()=>{
+          if(!confirmTwice("Restore the backup of "+b.date+" "+b.time+"?\n\nYour current files are backed up first, so you can undo this too."))return;
+          try{const r=await api("POST","/api/backups/"+b.id+"/restore");
+            toast(r.changed?"Restored "+r.restored.join(", ")+".\n"+(r.backup?"Your previous files were backed up as "+r.backup.date+" "+r.backup.time+". ":"")+"Click the refresh icon in Homepage.":r.message,"ok");
+            showBackups();}catch(e){toast(e.message,"bad");}}},"Restore"),
+        " ",
+        h("a",{class:"btn",href:"/api/backups/"+b.id+"/download",style:"text-decoration:none;display:inline-block;padding:7px 12px;border:1px solid var(--line);border-radius:8px;color:var(--text)"},"Download"),
+        " ",
+        h("button",{class:"btn danger",onclick:async()=>{if(!confirmTwice("Delete the backup of "+b.date+" "+b.time+"? This cannot be undone."))return;
+          try{await api("DELETE","/api/backups/"+b.id);showBackups();}catch(e){toast(e.message,"bad");}}},"Delete"))),
+      diffBox);
+  });
+  m.innerHTML="";
+  m.append(h("p",{class:"intro"},"A backup of all config files is made automatically before every save and every restore. "+
+      (d.keep>0?"The newest "+d.keep+" are kept.":"All backups are kept.")+" \"What changed since\" shows the difference between that backup and your files now (red = only in the backup, green = only now)."),
+    h("div",{class:"toolbar sticky"},note,h("button",{class:"btn",onclick:async()=>{try{const r=await api("POST","/api/backups",{note:note.value});toast("Backup made: "+r.backup.date+" "+r.backup.time,"ok");showBackups();}catch(e){toast(e.message,"bad");}}},"Make a backup now")),
+    d.backups.length?h("div",{class:"card scroll"},h("table",{class:"tbl"},h("thead",{},h("tr",{},["Date","What happened","Files",""].map(t=>h("th",{},t)))),body))
+      :h("div",{class:"empty card"},"No backups yet. One is made automatically the first time you save."),out);
+}
+
+/* ---------- theme ---------- */
+const darkMQ=window.matchMedia?window.matchMedia("(prefers-color-scheme: dark)"):null;
+function effectiveTheme(){const t=document.documentElement.dataset.theme;return t||(darkMQ&&!darkMQ.matches?"light":"dark");}
+function syncToggle(){const d=effectiveTheme()==="dark",b=document.getElementById("theme-toggle");
+  b.setAttribute("aria-checked",String(d));b.title=d?"Switch to light":"Switch to dark";}
+function applyTheme(t){
+  const r=document.documentElement;
+  if(t==="light"||t==="dark") r.dataset.theme=t; else delete r.dataset.theme;
+  try{localStorage.setItem("he-theme",t||"system");}catch(e){}
+  syncToggle();
+  document.querySelectorAll('input[name="theme"]').forEach(x=>{x.checked=x.value===(t||"system");});
+}
+async function toggleTheme(){
+  const t=effectiveTheme()==="dark"?"light":"dark";applyTheme(t);
+  try{await api("PUT","/api/config/theme",{theme:t});}catch(e){toast(e.message,"bad");}
+}
+function applyLogo(l){
+  const img=document.getElementById("brand-logo"),title=document.getElementById("brand-title");
+  img.src=l&&l.url?l.url:"/favicon.svg";img.classList.toggle("default",!(l&&l.url));
+  img.alt=l&&l.url&&l.show_title===false?"Homepage Editor":"";
+  title.hidden=!!(l&&l.url&&l.show_title===false);
+}
+function setHpLink(url){const a=document.getElementById("hp-link");if(url){a.href=url;a.hidden=false;}else a.hidden=true;}
+
+/* ---------- top bar, avatar menu ---------- */
+async function refreshInfo(){
+  try{
+    const i=await api("GET","/api/info");S.info=i;
+    setHpLink(i.homepage_url);applyTheme(i.theme);applyLogo(i.logo);
+    const av=document.getElementById("avatar"),nl=document.getElementById("nologin");
+    if(i.auth==="off"){av.textContent="⚙";av.title="Settings";nl.hidden=false;}
+    else{av.textContent=(i.user||"?").charAt(0);av.title=i.user+": account and settings";nl.hidden=true;}
+    const sp=document.getElementById("support-btn");
+    if(i.links.sponsor){sp.href=i.links.sponsor;sp.hidden=false;}else sp.hidden=true;
+    document.getElementById("side-foot").textContent="v"+i.version+" · "+i.backups+" backup"+(i.backups===1?"":"s");
+  }catch(e){}
+}
+function closeMenu(){const m=document.getElementById("menu");m.hidden=true;document.getElementById("avatar").setAttribute("aria-expanded","false");}
+function toggleMenu(e){
+  e.stopPropagation();
+  const m=document.getElementById("menu");if(!m.hidden){closeMenu();return;}
+  const i=S.info, L=i.links||{}, off=i.auth==="off";
+  const item=(ic,label,fn,ext)=>ext?h("a",{role:"menuitem",href:ext,target:"_blank",rel:"noopener",onclick:closeMenu},icon(ic),label,h("span",{class:"ext"},"↗"))
+    :h("button",{role:"menuitem",onclick:()=>{closeMenu();fn();}},icon(ic),label);
+  m.innerHTML="";
+  m.append(...[h("div",{class:"who"},h("span",{class:"avatar","aria-hidden":"true"},off?"⚙":(i.user||"?").charAt(0)),
+      h("div",{},h("b",{},off?"No login":i.user),h("small",{},off?"Login is switched off in setup.sh":"Logged in"))),
+    item("settings","Settings",()=>openSettings("general")),
+    item("docs","Help & documentation",()=>go("help")),
+    L.discord?item("discord","Community (Discord)",null,L.discord):null,
+    off?null:h("hr"),
+    off?null:item("logout","Log out",logout)].filter(Boolean));
+  m.hidden=false;document.getElementById("avatar").setAttribute("aria-expanded","true");
+  const first=m.querySelector("[role=menuitem]");if(first)first.focus();
+}
+async function logout(){
+  if(Object.values(S.dirty).some(Boolean)&&!confirmTwice("You have unsaved changes. Log out anyway?"))return;
+  S.dirty={};
+  try{await api("POST","/api/logout");}catch(e){}
+  location.href="/login";
+}
+
+/* ---------- windows ---------- */
+function closeOverlay(){document.getElementById("ov").innerHTML="";}
+function overlay(box){
+  const ov=document.getElementById("ov");ov.innerHTML="";
+  const scrim=h("div",{class:"scrim",onclick:e=>{if(e.target===scrim)closeOverlay();}},box);
+  ov.append(scrim);
+  const f=box.querySelector("input,select,textarea,button:not(.xbtn)");if(f)f.focus();
+}
+const xbtn=()=>h("button",{class:"ghost icon-only xbtn","aria-label":"Close",title:"Close",onclick:closeOverlay},"✕");
+function pwInput(ph,ac){
+  const i=h("input",{type:"password",placeholder:ph||"",autocomplete:ac||"off","aria-label":ph||"Password"});
+  const b=h("button",{type:"button",class:"eye","aria-label":"Show password",title:"Show password",onclick:()=>{
+    const vis=i.type==="password";i.type=vis?"text":"password";b.setAttribute("aria-label",vis?"Hide password":"Show password");b.title=b.getAttribute("aria-label");}},icon("eye"));
+  const w=h("div",{class:"pwf"},i,b);w.input=i;return w;
+}
+
+/* ---------- settings ---------- */
+const PANELS=[["general","General","general"],["security","Security","security"],["homepage","Homepage link","link"],
+              ["backups","Backups","backups"],["about","About","about"]];
+async function openSettings(panel){
+  let c;try{c=await api("GET","/api/config");}catch(e){toast(e.message,"bad");return;}
+  const body=h("div",{class:"mbody"});
+  const side=h("nav",{class:"mside","aria-label":"Settings"},h("h3",{},"Settings"));
+  const pick=p=>{side.querySelectorAll("button").forEach(b=>b.setAttribute("aria-current",String(b.dataset.p===p)));
+    body.innerHTML="";body.append(xbtn(),...({general:pGeneral,security:pSecurity,homepage:pHomepage,backups:pBackups,about:pAbout})[p](c,()=>openSettings(p)).filter(Boolean));};
+  PANELS.forEach(([id,label,ic])=>side.append(h("button",{"data-p":id,onclick:()=>pick(id)},icon(ic),label)));
+  overlay(h("div",{class:"modal",role:"dialog","aria-modal":"true","aria-label":"Settings"},side,body));
+  pick(panel||"general");
+}
+const src=s=>h("p",{class:"src"},s==="editor"?[h("b",{},"Set here."),
+  " The value from setup.sh is used again if you change it there."]:"From setup.sh (.env). Saving here overrides it.");
+const warnData=c=>c.about.data_writable?null:h("div",{class:"warnbox"},"The settings folder ("+c.about.data_path+") is not writable, so changes cannot be saved. Run ./setup.sh again.");
+
+function pGeneral(c,reload){
+  const seg=h("div",{class:"seg",role:"radiogroup","aria-label":"Appearance"},
+    [["system","System"],["light","Light"],["dark","Dark"]].map(([v,l])=>h("label",{},
+      h("input",{type:"radio",name:"theme",value:v,checked:c.theme===v,onchange:async()=>{
+        applyTheme(v);c.theme=v;try{await api("PUT","/api/config/theme",{theme:v});}catch(e){toast(e.message,"bad");}}}),l)));
+  const file=h("input",{type:"file",accept:"image/png,image/jpeg,image/gif,image/webp,image/svg+xml","aria-label":"Logo file"});
+  const up=h("button",{class:"btn primary",onclick:async()=>{
+    if(!file.files.length){toast("Choose a picture first.","bad");return;}
+    if(file.files[0].size>2*1024*1024){toast("The picture is too big: the maximum is 2 MB.","bad");return;}
+    up.disabled=true;const fd=new FormData();fd.append("logo",file.files[0]);
+    try{const r=await fetch("/api/config/logo",{method:"POST",body:fd,headers:{"X-Requested-With":"homepage-editor"}});
+      const d=await r.json().catch(()=>({error:"HTTP "+r.status}));if(!r.ok)throw new Error(d.error||("HTTP "+r.status));
+      applyLogo(d.logo);toast("Logo saved.","ok");reload();}catch(e){toast(e.message,"bad");up.disabled=false;}}},"Upload logo");
+  const rm=c.logo.url?h("button",{class:"btn danger",onclick:async()=>{
+    if(!confirmTwice("Remove your logo and show the app icon again?"))return;
+    try{const r=await api("DELETE","/api/config/logo");applyLogo(r.logo);toast("Logo removed.","ok");reload();}catch(e){toast(e.message,"bad");}}},"Remove logo"):null;
+  const showT=h("input",{type:"checkbox",checked:c.logo.show_title,disabled:!c.logo.url,onchange:async()=>{
+    try{const r=await api("PUT","/api/config/title",{show:showT.checked});applyLogo(r.logo);}catch(e){toast(e.message,"bad");}}});
+  return [h("h2",{},"General"),h("p",{class:"intro"},"How the editor looks. Saved right away."),warnData(c),
+    h("div",{class:"sec"},h("h3",{},"Appearance"),h("p",{class:"src"},"System follows your computer's light or dark mode. The sun/moon switch at the top right does the same quickly."),h("div",{class:"row"},seg)),
+    h("div",{class:"sec"},h("h3",{},"Logo"),
+      h("p",{class:"src"},c.logo.url?"Your logo, shown at the top left and on the login page.":"No logo uploaded: the app icon is shown."),
+      h("div",{class:"logo-prev"},h("img",{src:c.logo.url||"/favicon.svg",alt:"Current logo"})),
+      h("div",{class:"row"},file,up,rm),
+      h("div",{class:"row"},h("label",{class:"chk"},showT,"Show the text \"Homepage Editor\" next to the logo")),
+      h("p",{class:"help"},"PNG, JPG, GIF, WebP or SVG, up to 2 MB. A wide logo (e.g. 400 × 100 px) with a transparent background works best in light and dark."))];
+}
+
+function pSecurity(c,reload){
+  if(c.login.auth==="off") return [h("h2",{},"Security"),
+    h("div",{class:"warnbox"},"Login is switched off (chosen in setup.sh). Anyone who can open this page can edit your Homepage and see its API keys. Only use this when something else protects the editor, such as Authelia, Authentik, an NPM access list or a VPN."),
+    h("p",{class:"help"},"To switch the login on: run ./setup.sh again and choose the login page.")];
+  const cur=pwInput("Current password","current-password"), nu=h("input",{value:c.login.user,autocomplete:"username","aria-label":"New user name",placeholder:"User name"}),
+        np=pwInput("New password (at least 8 characters)","new-password"), np2=pwInput("Confirm new password","new-password");
+  const chg=h("button",{class:"btn primary",onclick:async()=>{chg.disabled=true;
+    try{await api("PUT","/api/config/login",{current:cur.input.value,user:nu.value,password:np.input.value,password2:np2.input.value});
+      toast("Login changed. You stay logged in here; other browsers must log in again with the new details.","ok");await refreshInfo();reload();}
+    catch(e){toast(e.message,"bad");chg.disabled=false;}}},"Change login");
+  const resetL=c.login.source==="editor"?h("button",{class:"btn",onclick:async()=>{
+    if(!cur.input.value){toast("Type your current password first.","bad");return;}
+    if(!confirmTwice("Go back to the user name and password from setup.sh (.env)?"))return;
+    try{await api("DELETE","/api/config/login",{current:cur.input.value});toast("Back to the setup login.","ok");await refreshInfo();reload();}catch(e){toast(e.message,"bad");}}},"Use the setup login again"):null;
+  const idle=h("input",{type:"number",min:"0",max:"10080",value:c.login.idle_minutes,"aria-label":"Minutes"});
+  const days=h("input",{type:"number",min:"1",max:"365",value:c.login.remember_days,"aria-label":"Days"});
+  const saveS=h("button",{class:"btn primary",onclick:async()=>{
+    try{await api("PUT","/api/config/sessions",{idle_minutes:idle.value,remember_days:days.value});toast("Saved.","ok");reload();}catch(e){toast(e.message,"bad");}}},"Save");
+  const everywhere=h("button",{class:"btn",onclick:async()=>{
+    if(!confirmTwice("Log out all other browsers and devices? This one stays logged in."))return;
+    try{await api("POST","/api/config/logout-everywhere");toast("All other browsers are logged out.","ok");}catch(e){toast(e.message,"bad");}}},"Log out everywhere else");
+  return [h("h2",{},"Security"),h("p",{class:"intro"},"Your login, passkeys and how long you stay logged in."),warnData(c),
+    h("div",{class:"sec"},h("h3",{},"Change user name and password"),
+      h("p",{class:"src"},"Logged in as ",h("b",{},c.login.user),". ",c.login.source==="editor"?"Login set here in Settings.":"Login from setup.sh (.env)."),
+      h("div",{class:"stack"},cur,nu,np,np2),h("div",{class:"row"},chg,resetL),
+      h("p",{class:"help"},"Stored hashed, never as plain text. Forgot it? Run ./setup.sh on the server and type a new password.")),
+    pPasskeys(c,reload),
+    h("div",{class:"sec"},h("h3",{},"Staying logged in"),
+      h("div",{class:"setrow"},h("div",{},h("b",{},"Log out after inactivity (minutes)"),h("small",{},"0 = never. Not used when \"Stay logged in\" was ticked at login.")),idle),
+      h("div",{class:"setrow"},h("div",{},h("b",{},"\"Stay logged in\" lasts (days)"),h("small",{},"For the tick box on the login page: 1 to 365.")),days),
+      h("div",{class:"row"},saveS,everywhere),
+      h("p",{class:"help"},"After 5 wrong passwords in a row, logging in from that address is blocked for 5 minutes. "+(c.login.remembered?"This browser is set to stay logged in.":"")))];
+}
+
+const b64u={dec:s=>Uint8Array.from(atob(s.replace(/-/g,"+").replace(/_/g,"/")+"===".slice((s.length+3)%4)),c=>c.charCodeAt(0)).buffer,
+  enc:b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")};
+function pPasskeys(c,reload){
+  const sec=h("div",{class:"sec"},h("h3",{},"Passkeys"));
+  if(!c.passkeys.available){sec.append(h("p",{class:"src"},"Passkeys are not available in this installation."));return sec;}
+  const can=window.isSecureContext&&!!window.PublicKeyCredential;
+  sec.append(h("p",{class:"src"},"Log in with your fingerprint, face, PIN or a security key instead of the password. Saved passkeys also work in password managers like Bitwarden."));
+  if(!can) sec.append(h("div",{class:"warnbox"},"Your browser only allows passkeys on https:// pages (or http://localhost). Open the editor through your reverse proxy with a domain and HTTPS, e.g. https://editor.example.com, to add one."));
+  c.passkeys.list.forEach(p=>sec.append(h("div",{class:"pk"},icon("key"),
+    h("div",{class:"grow"},h("b",{},p.name),h("small",{},"For "+p.rp+" · added "+p.added+(p.used?" · last used "+p.used:""))),
+    h("button",{class:"btn danger",onclick:async()=>{if(!confirmTwice("Remove the passkey \""+p.name+"\"?"))return;
+      try{await api("DELETE","/api/passkey/"+encodeURIComponent(p.id));toast("Passkey removed.","ok");reload();}catch(e){toast(e.message,"bad");}}},"Remove"))));
+  if(!c.passkeys.list.length) sec.append(h("p",{class:"help"},"No passkeys yet."));
+  const name=h("input",{placeholder:"Name, e.g. Laptop or Phone",maxlength:"60",style:"max-width:260px","aria-label":"Passkey name"});
+  const add=h("button",{class:"btn primary",disabled:!can,onclick:async()=>{
+    add.disabled=true;
+    try{
+      const o=await api("POST","/api/passkey/register/options");
+      o.challenge=b64u.dec(o.challenge);o.user.id=b64u.dec(o.user.id);(o.excludeCredentials||[]).forEach(x=>x.id=b64u.dec(x.id));
+      const cred=await navigator.credentials.create({publicKey:o});const r=cred.response;
+      await api("POST","/api/passkey/register/verify",{name:name.value,credential:{id:cred.id,rawId:b64u.enc(cred.rawId),type:cred.type,
+        clientExtensionResults:cred.getClientExtensionResults(),
+        response:{clientDataJSON:b64u.enc(r.clientDataJSON),attestationObject:b64u.enc(r.attestationObject),
+          transports:r.getTransports?r.getTransports():[]}}});
+      toast("Passkey added. Next time, choose \"Log in with a passkey\" on the login page.","ok");reload();
+    }catch(e){toast(e.name==="NotAllowedError"?"Adding the passkey was cancelled.":e.message,"bad");add.disabled=false;}}},"Add a passkey");
+  sec.append(h("div",{class:"row"},name,add));
+  return sec;
+}
+
+function pHomepage(c,reload){
+  const H={protocol:c.homepage.protocol,host:c.homepage.host,port:c.homepage.port};
+  const urlOut=h("code",{});
+  const upd=()=>{const host=(H.host||"").replace(/^[a-z]+:\/\//i,"").split("/")[0];const p=(H.port||"").trim();
+    const def=(H.protocol==="http"&&p==="80")||(H.protocol==="https"&&p==="443");
+    urlOut.textContent=host?H.protocol+"://"+host+(p&&!def?":"+p:""):"(no link: host is empty)";};
+  const save=h("button",{class:"btn primary",onclick:async()=>{save.disabled=true;
+    try{const r=await api("PUT","/api/config/homepage",H);setHpLink(r.url);toast("Saved. Open Homepage now goes to "+(r.url||"(nothing)")+".","ok");reload();}
+    catch(e){toast(e.message,"bad");save.disabled=false;}}},"Save link");
+  const sh=c.homepage.setup, setupUrl=(sh.host?sh.protocol+"://"+sh.host+(sh.port?":"+sh.port:""):"(none)");
+  const reset=c.homepage.source==="editor"?h("button",{class:"btn",onclick:async()=>{
+    try{const r=await api("DELETE","/api/config/homepage");setHpLink(r.url);toast("Back to the setup value: "+(r.url||"(none)"),"ok");reload();}catch(e){toast(e.message,"bad");}}},"Use setup value ("+setupUrl+")"):null;
+  upd();
+  return [h("h2",{},"Homepage link"),h("p",{class:"intro"},"Where the Open Homepage button goes."),warnData(c),src(c.homepage.source),
+    h("div",{class:"grid"},field("Protocol",select(H,"protocol",null,[["http","http"],["https","https"]],upd)),
+      field("IP address or host name",text(H,"host",null,"e.g. 192.168.1.10 or home.example.com",upd),{help:"No http:// and no port here."}),
+      field("Port",text(H,"port",null,"empty = no port (80/443)",upd),{help:"Empty = no port: the browser uses 80 (http) or 443 (https)."})),
+    h("p",{class:"help"},"Link: ",urlOut),h("div",{class:"row"},save,reset)];
+}
+
+function pBackups(c,reload){
+  const keep=h("input",{type:"number",min:"0",max:"100000",value:c.backups.keep,style:"max-width:140px","aria-label":"Backups to keep"});
+  const save=h("button",{class:"btn primary",onclick:async()=>{save.disabled=true;
+    try{await api("PUT","/api/config/backups",{keep:keep.value});toast("Saved. "+(+keep.value>0?"The newest "+(+keep.value)+" backups are kept; older ones are removed at the next backup.":"All backups are kept."),"ok");reload();}
+    catch(e){toast(e.message,"bad");save.disabled=false;}}},"Save");
+  const reset=c.backups.source==="editor"?h("button",{class:"btn",onclick:async()=>{
+    try{await api("DELETE","/api/config/backups");toast("Back to the setup value ("+c.backups.setup+").","ok");reload();}catch(e){toast(e.message,"bad");}}},"Use setup value ("+c.backups.setup+")"):null;
+  return [h("h2",{},"Backups"),h("p",{class:"intro"},"A dated backup of all config files is made before every save and restore."),warnData(c),src(c.backups.source),
+    h("div",{class:"row"},field("How many backups to keep (0 = keep all)",keep),save,reset),
+    h("p",{class:"help"},"There are "+c.about.backups+" backups now. Lowering the number removes the oldest ones at the next backup."),
+    h("div",{class:"row"},h("button",{class:"btn",onclick:()=>{closeOverlay();go("backups");}},"Open the Backups page"))];
+}
+
+function pAbout(c){
+  const A=c.about, L=c.links, row=(k,v)=>[h("dt",{},k),h("dd",{},v||"–")];
+  const link=(href,label)=>href?h("a",{href,target:"_blank",rel:"noopener"},label+" ↗"):null;
+  const links=[link(L.github,"GitHub repository"),link(L.docs,"Documentation"),link(L.discord,"Community on Discord"),
+    link(L.issues,"Report a bug (GitHub Issues)"),link(L.sponsor,"Support the project")].filter(Boolean);
+  return [h("h2",{},"About"),
+    h("div",{class:"about-card"},h("h3",{},h("img",{src:"/favicon.svg",width:"34",height:"34",alt:""}),"Homepage Editor"),
+      h("p",{class:"src",style:"font-size:13.5px"},"A web editor for Homepage (gethomepage.dev): services, bookmarks, layout and look, with a dated backup before every change. Unofficial tool, not part of the Homepage project."),
+      h("dl",{class:"about"},row("Version",A.version),row("Licence","MIT"),row("Stack / container",A.stack),row("Editor port",A.editor_port),
+        row("Homepage config folder",A.config_path),row("Backups folder",A.backup_path+"  ("+A.backups+")"),
+        row("Settings folder",A.data_path),row("Time zone",A.time_zone),row("Homepage link",c.homepage.url),
+        row("Login",c.login.auth==="off"?"switched off":"login page"))),
+    h("h3",{style:"font-size:14px"},"Links"),
+    links.length?h("div",{class:"links"},links):h("p",{class:"help"},"Project links (GitHub, Discord, support) will appear here once they are set."),
+    h("p",{class:"help"},"Folders are paths on the server. To change them, run ./setup.sh again.")];
+}
+
+/* ---------- help page ---------- */
+async function showHelp(){
+  const m=document.getElementById("main"),L=S.info.links||{};
+  const ext=(href,label)=>href?h("a",{href,target:"_blank",rel:"noopener"},label+" ↗"):null;
+  const p=(...k)=>h("p",{},...k), li=(...k)=>h("li",{},...k), code=t=>h("code",{},t);
+  m.innerHTML="";
+  m.append(h("div",{class:"helpdoc"},
+    h("p",{class:"intro"},"How the editor works. Nothing changes in Homepage until you press a Save button, and every save first makes a dated backup."),
+    (L.docs||L.discord)?h("div",{class:"row"},ext(L.docs,"Full documentation"),ext(L.discord,"Ask on Discord")):null,
+    h("h3",{},"The sections"),
+    h("ul",{},
+      li(h("b",{},"Services"),": the cards on your Homepage, in groups. Click one to edit it; widgets and other options go in the Advanced (YAML) box."),
+      li(h("b",{},"Bookmarks"),": the links at the bottom of Homepage."),
+      li(h("b",{},"Layout & tabs"),": the order of the groups, which tab they are on, rows or columns."),
+      li(h("b",{},"Look & background"),": title, theme, colours and background picture of Homepage itself."),
+      li(h("b",{},"Files"),": edit any config file directly, e.g. widgets.yaml or custom.css. YAML is checked before saving."),
+      li(h("b",{},"Backups"),": every save or restore makes a backup first. See what changed, restore or download one.")),
+    h("h3",{},"After saving"),
+    p("Open Homepage and click its refresh icon (bottom right), or reload the page, to see the change."),
+    h("h3",{},"Good to know"),
+    h("ul",{},
+      li("Saving from the forms rewrites the file neatly and removes # comments. The Files tab keeps exactly what you type."),
+      li("The editor shows your API keys. Keep it on your own network, or behind your reverse proxy with HTTPS."),
+      li("Don't edit with two tools at the same time: the last save wins. Reload the page if you changed something elsewhere.")),
+    h("h3",{},"Login"),
+    h("ul",{},
+      li("Password managers (Bitwarden, 1Password, your browser) can save and fill the login page."),
+      li("Tick ",h("b",{},"Stay logged in")," on the login page to skip it on that browser. Change how long in Settings › Security."),
+      li("Passkeys work when the editor is opened over https:// (through your reverse proxy with a domain). Add one in Settings › Security."),
+      li("Forgot your password? On the server run ",code("./setup.sh")," in the editor's folder and type a new password.")),
+    h("h3",{},"Something went wrong?"),
+    h("ul",{},
+      li("Restore the last good backup on the Backups page."),
+      li("Look at the editor's log: ",code("docker logs <stack name>"),"."),
+      li("Use ",h("b",{},"Feedback")," at the top to report a bug or ask a question.")),
+    h("p",{class:"help",style:"margin-top:24px"},"Homepage Editor "+(S.info.version||"")+". Unofficial tool, not part of the Homepage project.")));
+}
+
+/* ---------- feedback ---------- */
+function openFeedback(){
+  const L=S.info.links||{}, hasGH=!!L.issues, hasDC=!!L.discord;
+  const F={type:"Idea / suggestion",rating:"",text:"",dest:hasGH?"github":(hasDC?"discord":"copy"),meta:true};
+  const types=["Idea / suggestion","Bug","Question","Other"];
+  const chips=h("div",{class:"chips"},["Great","Okay","Had an issue","Missing something"].map(r=>
+    h("button",{type:"button","aria-pressed":"false",onclick:e=>{F.rating=F.rating===r?"":r;chips.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",String(b.textContent===F.rating)));}},r)));
+  const ta=h("textarea",{rows:"5",placeholder:"Tell what worked, what broke, or what would make the editor better.",oninput:e=>{F.text=e.target.value;go2.disabled=!F.text.trim();}});
+  const dest=(id,title,sub,ok)=>h("label",{class:ok?"":"off"},h("input",{type:"radio",name:"fbdest",value:id,checked:F.dest===id,disabled:!ok,onchange:()=>{F.dest=id;}}),
+    h("span",{},h("b",{},title),h("br"),h("small",{class:"help"},ok?sub:"Not set up yet")));
+  const message=()=>{
+    const lines=["**Type:** "+F.type];
+    if(F.rating) lines.push("**Rating:** "+F.rating);
+    lines.push("",F.text.trim());
+    if(F.meta) lines.push("","---","Homepage Editor "+S.info.version+" · "+navigator.userAgent);
+    return lines.join("\n");
+  };
+  const go2=h("button",{class:"btn primary",disabled:true,onclick:async()=>{
+    const msg=message();
+    if(F.dest==="github"){
+      const title=F.type.split(" ")[0]+": "+F.text.trim().split("\n")[0].slice(0,70);
+      window.open(L.issues+"/new?title="+encodeURIComponent(title)+"&body="+encodeURIComponent(msg),"_blank","noopener");
+      closeOverlay();toast("GitHub opened in a new tab with your text. Check it and press Create there.","ok");
+    }else{
+      try{await navigator.clipboard.writeText(msg);}catch(e){ta.value=msg;ta.select();toast("Copy the text with Ctrl+C, then paste it.","bad");return;}
+      if(F.dest==="discord"){window.open(L.discord,"_blank","noopener");closeOverlay();toast("Your text is copied. Paste it in the Discord channel (Ctrl+V).","ok");}
+      else{closeOverlay();toast("Your text is copied to the clipboard.","ok");}
+    }}},"Continue ↗");
+  const box=h("div",{class:"modal small-modal",role:"dialog","aria-modal":"true","aria-label":"Share feedback"},
+    h("div",{style:"display:flex;justify-content:space-between;align-items:center;margin-bottom:6px"},h("h2",{style:"margin:0;font-size:18px"},"Share feedback"),
+      h("button",{class:"ghost icon-only","aria-label":"Close",onclick:closeOverlay},"✕")),
+    h("p",{class:"help",style:"margin:0 0 14px"},"Nothing is sent by the editor itself. You choose where it goes and see the message before posting it. Your config, API keys and addresses are never included."),
+    h("div",{class:"fbcol"},
+      field("Feedback type",h("select",{onchange:e=>{F.type=types[e.target.selectedIndex];}},types.map(t=>h("option",{},t)))),
+      h("div",{class:"f"},"Quick rating",chips),
+      field("Feedback",ta),
+      h("div",{class:"f"},"Send it via",h("div",{class:"dest"},
+        dest("github","GitHub","Opens a new issue with your text filled in",hasGH),
+        dest("discord","Discord","Copies your text and opens the server",hasDC))),
+      (!hasGH&&!hasDC)?h("p",{class:"help"},"No GitHub or Discord link is set up yet: Continue copies your text to the clipboard."):null,
+      h("label",{class:"chk"},h("input",{type:"checkbox",checked:true,onchange:e=>{F.meta=e.target.checked;}}),"Add the editor version and browser (no other data)"),
+      h("div",{style:"display:flex;justify-content:flex-end;gap:8px"},h("button",{class:"btn",onclick:closeOverlay},"Cancel"),go2)));
+  overlay(box);
+}
+
+/* ---------- start ---------- */
+(async()=>{
+  const setHdr=()=>document.documentElement.style.setProperty('--hdr',document.querySelector('header').offsetHeight+'px');
+  renderTabs();setHdr();window.addEventListener('resize',setHdr);
+  if(window.ResizeObserver) new ResizeObserver(setHdr).observe(document.querySelector('header'));
+  document.getElementById("theme-toggle").addEventListener("click",toggleTheme);
+  document.getElementById("avatar").addEventListener("click",toggleMenu);
+  document.getElementById("fb-btn").addEventListener("click",openFeedback);
+  document.getElementById("help-btn").addEventListener("click",()=>go("help"));
+  document.addEventListener("keydown",e=>{if(e.key==="Escape"){closeMenu();closeOverlay();}});
+  document.addEventListener("click",e=>{const m=document.getElementById("menu");if(!m.hidden&&!m.contains(e.target)&&e.target.id!=="avatar")closeMenu();});
+  if(darkMQ&&darkMQ.addEventListener) darkMQ.addEventListener("change",syncToggle);
+  syncToggle();
+  await refreshInfo();
+  show();
+})();
+</script>
+</body>
+</html>

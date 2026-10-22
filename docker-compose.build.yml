@@ -1,0 +1,14 @@
+# Homepage Editor v1.0.0 - build from the source in this folder instead of using the ready image.
+# SPDX-License-Identifier: MIT
+#
+# Used together with docker-compose.yml. setup.sh sets this up for you with
+#   COMPOSE_FILE=docker-compose.yml:docker-compose.build.yml   (in .env)
+# By hand:  docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+services:
+  homepage-editor:
+    build: ${APP_DIR:-.}/editor
+    image: ${STACK_NAME:-homepage-editor}:local
+    pull_policy: build
+    labels:
+      # Built here, so Watchtower cannot update it: update with git pull + docker compose up -d --build
+      com.centurylinklabs.watchtower.enable: "false"

@@ -1,0 +1,119 @@
+<!doctype html>
+<!-- Homepage Editor v1.0.0 - login page. SPDX-License-Identifier: MIT -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Log in · Homepage Editor</title>
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.png" type="image/png" sizes="32x32">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<script>try{var t=localStorage.getItem("he-theme");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;}catch(e){}</script>
+<style>
+:root{--bg:#0f141b;--panel:#171e28;--panel2:#1e2733;--line:#2b3644;--text:#e6ebf1;--muted:#97a3b3;--accent:#4ea1ff;--accent-ink:#06223f;
+  --field:#0c1117;--bad:#ff9d8f;--bad-bg:#2c1714;--bad-line:#6e3a33;--shadow:rgba(0,0,0,.45);color-scheme:dark}
+:root[data-theme="light"]{--bg:#f3f5f8;--panel:#fff;--panel2:#eef2f6;--line:#d3dbe4;--text:#16202b;--muted:#566476;--accent:#1f6fcc;--accent-ink:#fff;
+  --field:#fff;--bad:#b42318;--bad-bg:#fdecea;--bad-line:#f1b8b0;--shadow:rgba(20,40,70,.16);color-scheme:light}
+@media (prefers-color-scheme: light){:root:not([data-theme="dark"]){--bg:#f3f5f8;--panel:#fff;--panel2:#eef2f6;--line:#d3dbe4;--text:#16202b;--muted:#566476;--accent:#1f6fcc;--accent-ink:#fff;
+  --field:#fff;--bad:#b42318;--bad-bg:#fdecea;--bad-line:#f1b8b0;--shadow:rgba(20,40,70,.16);color-scheme:light}}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px 16px;background:var(--bg);color:var(--text);font:14px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}
+.card{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:28px 26px;box-shadow:0 18px 50px var(--shadow)}
+.brand{display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:20px;text-align:center}
+.brand img{height:52px;max-width:220px;object-fit:contain}
+.brand img.default{height:56px;border-radius:12px}
+.brand h1{margin:0;font-size:19px;font-weight:650}
+.brand p{margin:0;color:var(--muted);font-size:13px}
+label{display:block;font-size:12.5px;color:var(--muted);margin:14px 0 5px}
+.pw{position:relative}
+input[type=text],input[type=password]{width:100%;min-height:40px;padding:8px 11px;border-radius:8px;border:1px solid var(--line);background:var(--field);color:var(--text);font:inherit}
+.pw input{padding-right:42px}
+.eye{position:absolute;right:4px;top:4px;width:34px;height:32px;border:0;border-radius:6px;background:none;color:var(--muted);cursor:pointer;display:grid;place-items:center}
+.eye:hover{color:var(--text);background:var(--panel2)}
+.eye svg{width:18px;height:18px}
+input:focus,button:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.chk{display:flex;align-items:center;gap:8px;margin:14px 0 18px;font-size:13px;color:var(--text);cursor:pointer}
+.chk input{width:17px;height:17px;accent-color:var(--accent)}
+.btn{width:100%;min-height:42px;border-radius:9px;font:inherit;font-weight:650;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px}
+.primary{background:var(--accent);color:var(--accent-ink);border:1px solid var(--accent)}
+.second{background:var(--panel2);color:var(--text);border:1px solid var(--line);margin-top:10px}
+.second svg{width:18px;height:18px}
+.or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:12px;margin:16px 0 6px}
+.or:before,.or:after{content:"";flex:1;height:1px;background:var(--line)}
+.msg{border:1px solid var(--bad-line);background:var(--bad-bg);color:var(--bad);border-radius:8px;padding:9px 11px;font-size:13px;margin-bottom:6px}
+.help{color:var(--muted);font-size:12px;margin:16px 0 0;text-align:center}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px}
+</style>
+</head>
+<body>
+<main class="card">
+  <div class="brand">
+    <img id="logo" class="default" src="/favicon.svg" alt="">
+    <h1>Homepage Editor</h1>
+    <p>Log in to edit your Homepage</p>
+  </div>
+  <div id="msg" class="msg" role="alert" hidden></div>
+  <!-- A plain form posted by the browser: password managers (Bitwarden, 1Password, the browser's own...) recognise it. -->
+  <form method="post" action="/login" id="form">
+    <label for="username">User name</label>
+    <input type="text" id="username" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus>
+    <label for="password">Password</label>
+    <div class="pw">
+      <input type="password" id="password" name="password" autocomplete="current-password" required>
+      <button type="button" class="eye" id="eye" aria-label="Show password" title="Show password">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
+    </div>
+    <label class="chk"><input type="checkbox" name="remember" id="remember"> <span id="remember-text">Stay logged in on this browser for 30 days</span></label>
+    <button class="btn primary" type="submit">Log in</button>
+  </form>
+  <div id="pk" hidden>
+    <div class="or">or</div>
+    <button class="btn second" type="button" id="pk-btn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="9" r="4"/><path d="M2 21v-1a6 6 0 0 1 9.5-4.9"/><circle cx="17.5" cy="14.5" r="2.5"/><path d="M17.5 17v4.5l1.5-1-1.5-1.2"/></svg>
+      Log in with a passkey
+    </button>
+  </div>
+  <p class="help">Forgot your password? Run <code>./setup.sh</code> on the server and type a new one.</p>
+</main>
+<script>
+"use strict";
+const MSG={wrong:"Wrong user name or password.",locked:"Too many wrong attempts. Wait 5 minutes and try again.",
+  refused:"Login refused: open the editor directly and try again."};
+const show=t=>{const m=document.getElementById("msg");m.textContent=t;m.hidden=!t;};
+const e=new URLSearchParams(location.search).get("e"); if(e) show(MSG[e]||"Login failed.");
+document.getElementById("eye").addEventListener("click",ev=>{const p=document.getElementById("password"),b=ev.currentTarget;
+  const vis=p.type==="password";p.type=vis?"text":"password";b.setAttribute("aria-label",vis?"Hide password":"Show password");b.title=b.getAttribute("aria-label");});
+// the remembered user name is filled by the password manager; the page itself stores nothing secret
+const b64u={dec:s=>Uint8Array.from(atob(s.replace(/-/g,"+").replace(/_/g,"/")+"===".slice((s.length+3)%4)),c=>c.charCodeAt(0)).buffer,
+  enc:b=>btoa(String.fromCharCode(...new Uint8Array(b))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"")};
+async function post(url,body){const r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json","X-Requested-With":"homepage-editor"},body:JSON.stringify(body||{})});
+  const d=await r.json().catch(()=>({error:"HTTP "+r.status}));if(!r.ok)throw new Error(d.error||("HTTP "+r.status));return d;}
+async function passkeyLogin(){
+  show("");
+  try{
+    const o=await post("/api/login/passkey/options");
+    o.challenge=b64u.dec(o.challenge);(o.allowCredentials||[]).forEach(c=>c.id=b64u.dec(c.id));
+    const cred=await navigator.credentials.get({publicKey:o});
+    const r=cred.response;
+    await post("/api/login/passkey/verify",{remember:document.getElementById("remember").checked,credential:{
+      id:cred.id,rawId:b64u.enc(cred.rawId),type:cred.type,clientExtensionResults:cred.getClientExtensionResults(),
+      response:{clientDataJSON:b64u.enc(r.clientDataJSON),authenticatorData:b64u.enc(r.authenticatorData),
+        signature:b64u.enc(r.signature),userHandle:r.userHandle?b64u.enc(r.userHandle):null}}});
+    location.href="/";
+  }catch(err){show(err.name==="NotAllowedError"?"Passkey login was cancelled.":err.message);}
+}
+(async()=>{
+  try{
+    const r=await fetch("/api/public");const p=await r.json();
+    const t=p.theme;if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;else delete document.documentElement.dataset.theme;
+    try{localStorage.setItem("he-theme",t||"system");}catch(e){}
+    if(p.logo&&p.logo.url){const i=document.getElementById("logo");i.src=p.logo.url;i.classList.remove("default");}
+    document.getElementById("remember-text").textContent="Stay logged in on this browser for "+p.remember_days+" day"+(p.remember_days===1?"":"s");
+    if(p.passkeys>0&&window.isSecureContext&&window.PublicKeyCredential){document.getElementById("pk").hidden=false;
+      document.getElementById("pk-btn").addEventListener("click",passkeyLogin);}
+  }catch(e){}
+})();
+</script>
+</body>
+</html>
