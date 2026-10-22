@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.1
+- setup.sh: yes/no questions only accept y, yes, n or no (any case), or Enter for the default.
+  Anything else asks again, instead of being taken as "no" (a typo at "Write these settings to
+  .env?" used to end setup without saving).
+
 ## 1.1.0
 - **Docker network**: by default Docker now chooses the stack's network, so it can no longer clash
   with an existing one. A fixed network is still possible (`EDITOR_SUBNET` +

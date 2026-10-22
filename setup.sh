@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Homepage Editor v1.1.0 - first-run setup. SPDX-License-Identifier: MIT
+# Homepage Editor v1.1.1 - first-run setup. SPDX-License-Identifier: MIT
 #
 # Asks for the paths, Homepage's address and port, the editor's port and login,
 # then writes .env next to this script. Run it again any time to change settings:
@@ -17,9 +17,17 @@ ask() {  # ask VAR "Question" "default"
   if [ -n "$def" ]; then read -r -p "$q [$def]: " ans || true; else read -r -p "$q: " ans || true; fi
   printf -v "$var" '%s' "${ans:-$def}"
 }
-yes_no() {  # yes_no "Question" Y|N
-  local ans; read -r -p "$1 [$( [ "$2" = Y ] && echo Y/n || echo y/N )]: " ans || true
-  ans="${ans:-$2}"; [[ "$ans" =~ ^[Yy] ]]
+yes_no() {  # yes_no "Question" Y|N  -> Enter = default; y/yes/n/no in any case; anything else asks again
+  local ans
+  while :; do
+    read -r -p "$1 [$( [ "$2" = Y ] && echo Y/n || echo y/N )]: " ans || true
+    ans="${ans:-$2}"
+    case "${ans,,}" in
+      y|yes) return 0 ;;
+      n|no)  return 1 ;;
+      *)     warn "Please type y or n (or press Enter for ${2,,})." ;;
+    esac
+  done
 }
 
 # Read one value from the existing .env (only plain KEY=value or KEY='value' lines).

@@ -1,4 +1,4 @@
-# Homepage Editor v1.1.0 - web page to edit Homepage's config, with dated backups and restore.
+# Homepage Editor v1.1.1 - web page to edit Homepage's config, with dated backups and restore.
 # SPDX-License-Identifier: MIT
 #
 # Settings come from .env (made by ./setup.sh, or copy .env.example to .env and fill it in).

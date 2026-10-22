@@ -1,4 +1,4 @@
-# Homepage Editor v1.1.0 - build from the source in this folder instead of using the ready image.
+# Homepage Editor v1.1.1 - build from the source in this folder instead of using the ready image.
 # SPDX-License-Identifier: MIT
 #
 # Used together with docker-compose.yml. setup.sh sets this up for you with

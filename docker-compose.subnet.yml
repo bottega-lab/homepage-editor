@@ -1,4 +1,4 @@
-# Homepage Editor v1.1.0 - give the stack a fixed Docker network instead of letting Docker choose.
+# Homepage Editor v1.1.1 - give the stack a fixed Docker network instead of letting Docker choose.
 # SPDX-License-Identifier: MIT
 #
 # Only needed when Docker cannot find a free network itself ("could not find an available,

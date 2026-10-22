@@ -10,7 +10,7 @@ each one and restores any of them with one click.
 > Unofficial tool. Not made by or affiliated with the Homepage project.
 > It only reads and writes Homepage's YAML/CSS/JS config files.
 
-Version 1.1.0 · MIT licence · runs on **amd64** and **arm64** (e.g. Raspberry Pi 3/4/5 with a
+Version 1.1.1 · MIT licence · runs on **amd64** and **arm64** (e.g. Raspberry Pi 3/4/5 with a
 64-bit system; 32-bit ARM is not supported)
 
 ## Install

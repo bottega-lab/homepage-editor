@@ -1,4 +1,4 @@
-# Homepage Editor v1.1.0. SPDX-License-Identifier: MIT
+# Homepage Editor v1.1.1. SPDX-License-Identifier: MIT
 # Built for linux/amd64 and linux/arm64 (Raspberry Pi 3/4/5 with a 64-bit system, other ARM boards).
 FROM python:3.12-slim
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 PUID=1000 PGID=1000
