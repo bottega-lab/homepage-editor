@@ -1,4 +1,4 @@
-"""Homepage Editor v1.0.0 - a small web UI to edit gethomepage.dev config files.
+"""Homepage Editor v1.1.0 - a small web UI to edit gethomepage.dev config files.
 
 SPDX-License-Identifier: MIT
 Unofficial tool, not part of the Homepage project.
@@ -29,7 +29,7 @@ CONFIG_DIR = os.environ.get("CONFIG_DIR", "/config")
 BACKUP_DIR = os.environ.get("BACKUP_DIR", "/backups")
 EDITOR_USER = os.environ.get("EDITOR_USER", "admin")
 EDITOR_PASSWORD = os.environ.get("EDITOR_PASSWORD", "")
-VERSION = "1.0.0"
+VERSION = "1.1.0"
 
 
 # "login" (default): login page. "off": no login at all; only when something else protects the

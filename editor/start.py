@@ -1,4 +1,4 @@
-"""Homepage Editor v1.0.0 - container start. SPDX-License-Identifier: MIT
+"""Homepage Editor v1.1.0 - container start. SPDX-License-Identifier: MIT
 
 Runs first, as root, like the linuxserver.io images do:
 1. makes sure the editor's own folders (/backups and /data) belong to PUID:PGID,

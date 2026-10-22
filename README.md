@@ -10,7 +10,7 @@ each one and restores any of them with one click.
 > Unofficial tool. Not made by or affiliated with the Homepage project.
 > It only reads and writes Homepage's YAML/CSS/JS config files.
 
-Version 1.0.0 · MIT licence · runs on **amd64** and **arm64** (e.g. Raspberry Pi 3/4/5 with a
+Version 1.1.0 · MIT licence · runs on **amd64** and **arm64** (e.g. Raspberry Pi 3/4/5 with a
 64-bit system; 32-bit ARM is not supported)
 
 ## Install
@@ -58,6 +58,10 @@ nano .env                    # fill in at least HOMEPAGE_CONFIG and EDITOR_PASSW
 docker compose up -d
 ```
 
+> **Already running a Homepage Editor (or something on port 5005)?** Change `STACK_NAME` and
+> `EDITOR_PORT` in `.env` first. Two stacks with the same name means Docker *replaces* the
+> running container. (`setup.sh` checks this for you.)
+
 Only two settings are required; see the table below for the rest. The editor creates its
 `backups` and `data` folders next to `docker-compose.yml` and gives them to `PUID:PGID` itself,
 so there is nothing else to prepare. Check the start with `docker logs homepage-editor`.
@@ -69,13 +73,16 @@ so there is nothing else to prepare. Check the start with `docker logs homepage-
   (the line ending in `/app/config`; use your container's name instead of `homepage`)
 - Homepage's port: `docker port homepage` (the number after `0.0.0.0:`)
 - PUID / PGID: `ls -ln /path/to/homepage/config` (the two numbers after the permissions)
-- A free Docker network: `docker network inspect $(docker network ls -q) --format '{{range .IPAM.Config}}{{.Subnet}} {{end}}'`
-  lists the ones in use.
+- Docker network: Docker chooses one itself. Only if `docker compose up` says *"could not find an
+  available, non-overlapping IPv4 address pool"*, set `EDITOR_SUBNET` to a free range and add
+  `docker-compose.subnet.yml` to `COMPOSE_FILE` (both lines are in `.env`). The ranges in use:
+  `docker network inspect $(docker network ls -q) --format '{{range .IPAM.Config}}{{.Subnet}} {{end}}'`
+  and `ip route`.
 
 ### 3. Build from the source
 
 Same as 1, and choose **2 = build it here** in `setup.sh`. By hand: in `.env`, use the line
-`COMPOSE_FILE='docker-compose.yml:docker-compose.build.yml'` and start with
+`COMPOSE_FILE='docker-compose.yml:docker-compose.build.yml'` (add `:docker-compose.subnet.yml` for a fixed network) and start with
 `docker compose up -d --build`. Everything in the image is then built from the files in
 `editor/`, which you can read first.
 
@@ -94,10 +101,10 @@ Same as 1, and choose **2 = build it here** in `setup.sh`. By hand: in `.env`, u
 | `DATA_PATH` | | `./data` | The editor's own settings: login, passkeys, logo |
 | `BACKUP_KEEP` | | `100` | How many backups to keep, `0` = all |
 | `TZ` | | `UTC` | Time zone for backup dates, e.g. `Europe/Amsterdam` |
-| `STACK_NAME` | | `homepage-editor` | Name of the stack and container |
-| `EDITOR_SUBNET` | | `172.31.250.0/24` | Docker network of the stack; change it if already used |
-| `IMAGE` | | `ghcr.io/bottega-lab/homepage-editor:1` | The ready image; `:1` = all 1.x updates (safe), `:latest` = always the newest, `:1.0.0` = never changes |
-| `COMPOSE_FILE` | | `docker-compose.yml` | Add `:docker-compose.build.yml` to build from source |
+| `STACK_NAME` | | `homepage-editor` | Name of the stack and container; must be unique on the server |
+| `EDITOR_SUBNET` | | (empty: Docker chooses) | A fixed Docker network, e.g. `10.0.10.0/24`; needs `docker-compose.subnet.yml` in `COMPOSE_FILE` |
+| `IMAGE` | | `ghcr.io/bottega-lab/homepage-editor:latest` | The ready image. After the colon: `latest` = always the newest, `1` = all 1.x updates but never 2.0 by surprise, `1.1.0` = this exact version |
+| `COMPOSE_FILE` | | `docker-compose.yml` | Add `:docker-compose.build.yml` to build from source, `:docker-compose.subnet.yml` for a fixed network |
 | `APP_DIR` | | | Only for tools that keep their own copy of the compose file (Dockhand) |
 
 After changing `.env`: `docker compose up -d`.
@@ -108,7 +115,7 @@ It is a plain Bash script; read it before running it if you like. It:
 
 - **asks questions** and writes **one file, `.env`**, in its own folder (an old `.env` is kept as `.env.bak`);
 - **looks around read-only** to suggest answers: `docker ps` / `docker inspect` (Homepage's config
-  folder and port), `docker network inspect` (free network), `ss` (free port), `ls`/`stat` (file
+  folder and port), `docker network inspect` and `ip route` (a free network), `ss` (free port), `ls`/`stat` (file
   owner), `timedatectl` (time zone), and, only if no Homepage container is found, a search for
   Homepage-like folders in your home folder, `/opt`, `/srv`, `/docker` and `/data`;
 - checks whether the ready image exists (`docker manifest inspect`, which contacts the image registry);

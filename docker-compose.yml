@@ -1,14 +1,15 @@
-# Homepage Editor v1.0.0 - web page to edit Homepage's config, with dated backups and restore.
+# Homepage Editor v1.1.0 - web page to edit Homepage's config, with dated backups and restore.
 # SPDX-License-Identifier: MIT
 #
 # Settings come from .env (made by ./setup.sh, or copy .env.example to .env and fill it in).
 # By default this uses the ready image (amd64 + arm64). To build from the source in this folder
 # instead, setup.sh adds docker-compose.build.yml (see COMPOSE_FILE in .env).
+# Docker chooses the network itself; to set one (EDITOR_SUBNET), add docker-compose.subnet.yml.
 name: ${STACK_NAME:-homepage-editor}
 
 services:
   homepage-editor:
-    image: ${IMAGE:-ghcr.io/bottega-lab/homepage-editor:1}
+    image: ${IMAGE:-ghcr.io/bottega-lab/homepage-editor:latest}
     container_name: ${STACK_NAME:-homepage-editor}
     restart: unless-stopped
     ports:
@@ -36,9 +37,3 @@ services:
       - ${DATA_PATH:-${APP_DIR:-.}/data}:/data          # the editor's own settings
     # The container starts as root only to give /backups and /data to PUID:PGID, then runs as
     # PUID:PGID. Homepage's config folder is never changed.
-
-networks:
-  default:
-    ipam:
-      config:
-        - subnet: ${EDITOR_SUBNET:-172.31.250.0/24}   # change if another Docker network uses it

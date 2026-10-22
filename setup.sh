@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Homepage Editor v1.0.0 - first-run setup. SPDX-License-Identifier: MIT
+# Homepage Editor v1.1.0 - first-run setup. SPDX-License-Identifier: MIT
 #
 # Asks for the paths, Homepage's address and port, the editor's port and login,
 # then writes .env next to this script. Run it again any time to change settings:
@@ -44,14 +44,34 @@ free_port() { local p="$1"; while port_in_use "$p"; do p=$((p+1)); done; echo "$
 
 used_subnets() { [ -n "$DOCKER" ] && $DOCKER network inspect $($DOCKER network ls -q) \
   --format '{{range .IPAM.Config}}{{.Subnet}} {{end}}' 2>/dev/null | tr ' ' '\n' | grep . || true; }
-free_subnet() {  # first free 10.0.N.0/24 (only when Docker could be asked)
-  local used n
-  [ -n "$DOCKER" ] || { echo "172.31.250.0/24"; return; }
-  used="$(used_subnets)"
+host_subnets() {  # networks this server itself uses (LAN, VLANs, VPN): a Docker network must not overlap them
+  command -v ip >/dev/null || return 0
+  ip -4 route show 2>/dev/null | awk '$1 ~ /^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+\/[0-9]+$/ {print $1}' || true
+}
+valid_cidr() {  # IPv4 a.b.c.d/n
+  [[ "$1" =~ ^([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})\.([0-9]{1,3})/([0-9]{1,2})$ ]] || return 1
+  local i; for i in 1 2 3 4; do [ "${BASH_REMATCH[$i]}" -le 255 ] || return 1; done
+  [ "${BASH_REMATCH[5]}" -ge 8 ] && [ "${BASH_REMATCH[5]}" -le 29 ]
+}
+ip2int() { local a b c d; IFS=. read -r a b c d <<<"$1"; echo $(( (a<<24) + (b<<16) + (c<<8) + d )); }
+overlaps() {  # overlaps A/m B/n -> true if the two IPv4 ranges share any address
+  local a="${1%/*}" m="${1#*/}" b="${2%/*}" n="${2#*/}" k mask
+  [[ "$b" == *:* ]] && return 1                       # IPv6: cannot overlap an IPv4 range
+  k=$(( m < n ? m : n )); mask=$(( (0xFFFFFFFF << (32 - k)) & 0xFFFFFFFF ))
+  [ $(( $(ip2int "$a") & mask )) -eq $(( $(ip2int "$b") & mask )) ]
+}
+subnet_clash() {  # subnet_clash CIDR -> prints the first used network it overlaps (Docker or the host)
+  local s
+  while read -r s; do [ -n "$s" ] && overlaps "$1" "$s" && { echo "$s"; return 0; }; done \
+    < <(used_subnets; host_subnets)
+  return 1
+}
+free_subnet() {  # first 10.0.N.0/24 that overlaps no Docker network and none of the host's networks
+  local n
+  [ -n "$DOCKER" ] || return 0                        # cannot check: leave it to Docker
   for n in $(seq 1 254); do
-    grep -qx "10.0.$n.0/24" <<<"$used" || { echo "10.0.$n.0/24"; return; }
+    subnet_clash "10.0.$n.0/24" >/dev/null || { echo "10.0.$n.0/24"; return; }
   done
-  echo "172.31.250.0/24"
 }
 
 # ---- Time zone picker: Enter keeps the default, "?" shows region/city lists,
@@ -228,7 +248,15 @@ while :; do
     warn "This does not look like a Homepage config folder (${v#no: })."
     yes_no "   Use it anyway?" N || continue
   fi
-  [ "$HOMEPAGE_CONFIG" != "$CFG_DEF" ] && DETECTED_PORT=""
+  if [ "$HOMEPAGE_CONFIG" != "$CFG_DEF" ]; then
+    # Another folder than suggested: use the port of the container that mounts this folder, or,
+    # if there is exactly one Homepage container, its port (e.g. when testing on a copy).
+    DETECTED_PORT="$(awk -F'|' -v p="$HOMEPAGE_CONFIG" '$1==p {print $2; exit}' <<<"$CANDIDATES")"
+    if [ -z "$DETECTED_PORT" ]; then
+      ONLY="$(grep -F "|container '" <<<"$CANDIDATES" || true)"
+      [ "$(grep -c . <<<"$ONLY")" -eq 1 ] && DETECTED_PORT="$(cut -d'|' -f2 <<<"$ONLY")"
+    fi
+  fi
   break
 done
 PUID_DEF="$(old PUID)"; PUID_DEF="${PUID_DEF:-$(stat -c %u "$HOMEPAGE_CONFIG")}"
@@ -282,7 +310,7 @@ done
 
 # ---- 4. How to get the app, editor port, name and login
 say ""
-IMAGE_DEF="$(old IMAGE)"; IMAGE_DEF="${IMAGE_DEF:-ghcr.io/bottega-lab/homepage-editor:1}"
+IMAGE_DEF="$(old IMAGE)"; IMAGE_DEF="${IMAGE_DEF:-ghcr.io/bottega-lab/homepage-editor:latest}"
 M_DEF="$(old COMPOSE_FILE)"; if [[ "$M_DEF" == *build* ]]; then M_DEF=2; elif [ -n "$M_DEF" ]; then M_DEF=1; else M_DEF=""; fi
 IMAGE_OK=""
 if [[ "$IMAGE_DEF" == *YOUR-GITHUB-NAME* ]]; then
@@ -309,13 +337,15 @@ while :; do
   esac
 done
 if [ "$INSTALL" = image ]; then
+  say "   Image version (the part after the colon): latest = always the newest version (default),"
+  say "     :1 = all 1.x updates but never 2.0 by surprise, :1.1.0 = this exact version, no updates."
   ask IMAGE "   Image" "$IMAGE_DEF"
   [[ "$IMAGE" == *YOUR-GITHUB-NAME* ]] && warn "This image name is a placeholder: starting will fail until the real image name is set."
   COMPOSE_FILE="docker-compose.yml"
 else
   IMAGE="$IMAGE_DEF"
   COMPOSE_FILE="docker-compose.yml:docker-compose.build.yml"
-fi
+fi                                   # docker-compose.subnet.yml is added below if a network is chosen
 STACK_DEF="$(old STACK_NAME)"; STACK_DEF="${STACK_DEF:-homepage-editor}"
 if [ -z "$(old STACK_NAME)" ] && [ -n "$DOCKER" ] && $DOCKER ps -a --format '{{.Names}}' | grep -qx "$STACK_DEF"; then
   STACK_DEF="homepage-editor-$(basename "$APP_DIR" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9\n' '-')"
@@ -351,10 +381,18 @@ if [ "$AUTH_MODE" = off ] && [ "$A_DEF" != off ]; then
 fi
 U_DEF="$(old EDITOR_USER)"
 OLD_PW="$(old EDITOR_PASSWORD)"
+# EDITOR_PASSWORD_HIDDEN (only used by setup.sh): yes = the stored password was made silently in
+# "no login" mode and never shown. A password you typed or saw stays "no" and is kept.
+OLD_HIDDEN="$(old EDITOR_PASSWORD_HIDDEN)"
+if [ -z "$OLD_HIDDEN" ] && [ -n "$OLD_PW" ]; then
+  # .env from 1.0 (no marker): only a password stored while the login was off can be a hidden one
+  [ "$A_DEF" = off ] && OLD_HIDDEN=yes || OLD_HIDDEN=no
+fi
 if [ "$AUTH_MODE" = off ]; then
   # keep (or quietly create) a login, so it works right away if you switch it back on
   EDITOR_USER="${U_DEF:-admin}"
-  EDITOR_PASSWORD="${OLD_PW:-$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20 || true)}"
+  if [ -n "$OLD_PW" ]; then EDITOR_PASSWORD="$OLD_PW"; PW_HIDDEN="$OLD_HIDDEN"   # keep it as it was
+  else EDITOR_PASSWORD="$(tr -dc 'A-Za-z0-9' </dev/urandom 2>/dev/null | head -c 20 || true)"; PW_HIDDEN=yes; fi
   say "   No login. The editor shows a \"No login\" badge as a reminder."
 else
 ask EDITOR_USER "   Login user name" "${U_DEF:-admin}"
@@ -362,6 +400,8 @@ if grep -qs '"auth"' "$DATA_PATH/editor-settings.json"; then
   say "   Note: the login was changed in the editor (Settings). Enter keeps that login;"
   say "   typing a new password here replaces it (this is how a forgotten password is reset)."
 fi
+# A hidden password (never shown) is not offered as "keep current": Enter makes a new one and shows it.
+[ "$OLD_HIDDEN" = yes ] && OLD_PW=""
 while :; do
   if [ -n "$OLD_PW" ]; then
     read -r -s -p "   Login password (Enter = keep current): " EDITOR_PASSWORD || true; echo
@@ -369,7 +409,7 @@ while :; do
   else
     read -r -s -p "   Login password (Enter = generate one): " EDITOR_PASSWORD || true; echo
     if [ -z "$EDITOR_PASSWORD" ]; then
-      EDITOR_PASSWORD="$(tr -dc 'A-Za-z0-9' </dev/urandom | head -c 20 || true)"
+      EDITOR_PASSWORD="$(tr -dc 'A-Za-z0-9' </dev/urandom 2>/dev/null | head -c 20 || true)"
       say "   Generated password: $EDITOR_PASSWORD   (write it down; it is also in .env)"
     else
       read -r -s -p "   Repeat password: " PW2 || true; echo
@@ -380,21 +420,31 @@ while :; do
   if [ "$EDITOR_PASSWORD" = "change-me" ] || [ "${#EDITOR_PASSWORD}" -lt 8 ]; then warn "Use at least 8 characters (and not change-me)."; OLD_PW=""; continue; fi
   break
 done
+PW_HIDDEN=no                         # typed, shown or kept-and-known
 fi
 
 # ---- 5. Details that are usually right automatically
 say ""
 TZ_DEF="$(old TZ)"; TZ_DEF="${TZ_DEF:-$(cat /etc/timezone 2>/dev/null || timedatectl show -p Timezone --value 2>/dev/null || echo UTC)}"
-S_DEF="$(old EDITOR_SUBNET)"; S_DEF="${S_DEF:-$(free_subnet)}"
+if [ -f "$ENV_FILE" ] && grep -q '^EDITOR_SUBNET=' "$ENV_FILE"; then S_DEF="$(old EDITOR_SUBNET)"; S_DEF="${S_DEF:-auto}"
+else S_DEF="$(free_subnet)"; S_DEF="${S_DEF:-auto}"; fi
 say "5. Checked automatically (press Enter to accept):"
 ask PUID "   User id that owns the config files" "$PUID_DEF"
 ask PGID "   Group id that owns the config files" "$PGID_DEF"
 choose_tz "$TZ_DEF"
-ask EDITOR_SUBNET "   Docker network for this stack" "$S_DEF"
-if [ -n "$DOCKER" ] && [ -z "$(old EDITOR_SUBNET)" ] && used_subnets | grep -qx "$EDITOR_SUBNET"; then
-  warn "$EDITOR_SUBNET is already used by another Docker network. Edit EDITOR_SUBNET in .env before starting."
-fi
-[ -z "$DOCKER" ] && warn "Docker could not be asked, so $EDITOR_SUBNET was not checked. Make sure no other network uses it."
+say "   Docker network: a free one is suggested (it overlaps no Docker network and none of this"
+say "   server's own networks). auto = let Docker choose."
+while :; do
+  ask EDITOR_SUBNET "   Docker network for this stack" "$S_DEF"
+  [ "$EDITOR_SUBNET" = auto ] && { EDITOR_SUBNET=""; break; }
+  valid_cidr "$EDITOR_SUBNET" || { warn "Write it like 10.0.10.0/24 (or auto)."; continue; }
+  if [ -n "$DOCKER" ] && [ "$EDITOR_SUBNET" != "$(old EDITOR_SUBNET)" ] && CLASH="$(subnet_clash "$EDITOR_SUBNET")"; then
+    warn "$EDITOR_SUBNET overlaps $CLASH, which is already in use. Free one: $(free_subnet || true)"; continue
+  fi
+  [ -z "$DOCKER" ] && warn "Docker could not be asked, so $EDITOR_SUBNET was not checked. Make sure no other network uses it."
+  break
+done
+[ -n "$EDITOR_SUBNET" ] && COMPOSE_FILE="$COMPOSE_FILE:docker-compose.subnet.yml"
 
 # ---- Summary and write
 URL="$HOMEPAGE_PROTOCOL://$HOMEPAGE_HOST${HOMEPAGE_PORT:+:$HOMEPAGE_PORT}"
@@ -405,7 +455,7 @@ say "  Backups         : $BACKUP_PATH (keep $BACKUP_KEEP)"
 say "  Editor settings : $DATA_PATH"
 say "  Homepage link   : $URL"
 say "  Editor          : $STACK_NAME on port $EDITOR_PORT, $([ "$AUTH_MODE" = off ] && echo "NO LOGIN" || echo "login page, user $EDITOR_USER")"
-say "  Runs as         : $PUID:$PGID   time zone $TZ   network $EDITOR_SUBNET"
+say "  Runs as         : $PUID:$PGID   time zone $TZ   network ${EDITOR_SUBNET:-chosen by Docker}"
 say "  App             : $([ "$INSTALL" = image ] && echo "ready image $IMAGE" || echo "built here from the source")"
 yes_no "Write these settings to .env?" Y || { say "Nothing written."; exit 1; }
 
@@ -441,8 +491,11 @@ EDITOR_PORT='$EDITOR_PORT'
 AUTH_MODE='$AUTH_MODE'
 EDITOR_USER='$EDITOR_USER'
 EDITOR_PASSWORD='$EDITOR_PASSWORD'
+# For setup.sh only: yes = this password was made in "no login" mode and never shown
+EDITOR_PASSWORD_HIDDEN='$PW_HIDDEN'
 
-# Owner of Homepage's config files, time zone, Docker network
+# Owner of Homepage's config files, time zone, Docker network (empty = chosen by Docker;
+# a value here is only used together with docker-compose.subnet.yml in COMPOSE_FILE)
 PUID='$PUID'
 PGID='$PGID'
 TZ='$TZ'
